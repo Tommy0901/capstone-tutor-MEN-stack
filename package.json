@@ -7,6 +7,7 @@
     "start": "node dist/app.js",
     "dev": "nodemon src/app.ts",
     "build": "tsc -p ./",
+    "dbsetup": "node dist/create-database.js && npx sequelize-cli db:migrate",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -18,6 +19,7 @@
     "mysql2": "^3.9.5",
     "reflect-metadata": "^0.2.2",
     "sequelize": "^6.37.3",
+    "sequelize-cli": "^6.6.2",
     "sequelize-typescript": "^2.1.6"
   },
   "devDependencies": {
