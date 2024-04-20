@@ -1,6 +1,6 @@
 import { Model, Table, Column } from 'sequelize-typescript'
 
-@Table({ tableName: 'Admins', timestamps: true })
+@Table({ timestamps: true })
 export class Admin extends Model<Admin> {
   @Column
     name!: string

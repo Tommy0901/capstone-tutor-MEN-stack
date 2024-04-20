@@ -1,9 +1,9 @@
 import { type QueryInterface } from 'sequelize'
 
-export = {
+export default {
   up: async (queryInterface: QueryInterface) => {
     await queryInterface.sequelize.query(`
-      CREATE TABLE IF NOT EXISTS Categories (
+      CREATE TABLE IF NOT EXISTS categories (
         id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
         name VARCHAR(80) UNIQUE NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -14,7 +14,7 @@ export = {
 
   down: async (queryInterface: QueryInterface) => {
     await queryInterface.sequelize.query(
-      'DROP TABLE IF EXISTS Categories'
+      'DROP TABLE IF EXISTS categories'
     )
   }
 }

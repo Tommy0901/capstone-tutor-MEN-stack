@@ -1,9 +1,9 @@
 import { type QueryInterface } from 'sequelize'
 
-export = {
+export default {
   up: async (queryInterface: QueryInterface) => {
     await queryInterface.sequelize.query(`
-      CREATE TABLE IF NOT EXISTS Courses (
+      CREATE TABLE IF NOT EXISTS courses (
         id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
         teacher_id INT NOT NULL,
         category JSON,
@@ -16,14 +16,14 @@ export = {
         start_at DATETIME NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        CONSTRAINT courses_fk_user_id FOREIGN KEY (teacher_id) REFERENCES Users(id)
+        CONSTRAINT courses_fk_user_id FOREIGN KEY (teacher_id) REFERENCES users(id)
       )`
     )
   },
 
   down: async (queryInterface: QueryInterface) => {
     await queryInterface.sequelize.query(
-      'DROP TABLE IF EXISTS Courses'
+      'DROP TABLE IF EXISTS courses'
     )
   }
 }

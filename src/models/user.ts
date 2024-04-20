@@ -1,9 +1,9 @@
 import { Model, Table, Column, HasMany } from 'sequelize-typescript'
-import { TeachingCategory } from './teaching-category'
 import { Course } from './course'
 import { Registration } from './registration'
+import { TeachingCategory } from './teaching-category'
 
-@Table({ tableName: 'Users', timestamps: true })
+@Table({ timestamps: true })
 export class User extends Model<User> {
   @Column
     name!: string

@@ -1,14 +1,14 @@
-import { Model, Table, Column, ForeignKey, BelongsTo, HasMany } from 'sequelize-typescript'
+import { Model, Table, Column, DataType, ForeignKey, BelongsTo, HasMany } from 'sequelize-typescript'
 import { User } from './user'
 import { Registration } from './registration'
 
-@Table({ tableName: 'Courses', timestamps: true })
+@Table({ timestamps: true })
 export class Course extends Model<Course> {
   @ForeignKey(() => User)
   @Column
     teacherId!: number
 
-  @Column
+  @Column(DataType.JSON)
     category!: object
 
   @Column
@@ -21,7 +21,7 @@ export class Course extends Model<Course> {
     link!: string
 
   @Column
-    duration!: string | number
+    duration!: number
 
   @Column
     image!: string

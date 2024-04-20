@@ -1,9 +1,9 @@
 import { type QueryInterface } from 'sequelize'
 
-export = {
+export default {
   up: async (queryInterface: QueryInterface) => {
     await queryInterface.sequelize.query(`
-      ALTER TABLE Users
+      ALTER TABLE users
         ADD COLUMN mon TINYINT DEFAULT 0 NOT NULL AFTER self_intro,
         ADD COLUMN tue TINYINT DEFAULT 0 NOT NULL AFTER mon,
         ADD COLUMN wed TINYINT DEFAULT 0 NOT NULL AFTER tue,
@@ -16,7 +16,7 @@ export = {
 
   down: async (queryInterface: QueryInterface) => {
     await queryInterface.sequelize.query(`
-      ALTER TABLE Users
+      ALTER TABLE users
         DROP COLUMN mon,
         DROP COLUMN tue,
         DROP COLUMN wed,

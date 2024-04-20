@@ -2,7 +2,7 @@ import { Model, Table, Column, ForeignKey, BelongsTo } from 'sequelize-typescrip
 import { User } from './user'
 import { Course } from './course'
 
-@Table({ tableName: 'Registrations', timestamps: true })
+@Table({ timestamps: true })
 export class Registration extends Model<Registration> {
   @ForeignKey(() => User)
   @Column
