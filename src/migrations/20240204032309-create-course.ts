@@ -11,7 +11,6 @@ export default {
         intro TEXT NOT NULL,
         link VARCHAR(255) NOT NULL,
         duration INT NOT NULL,
-        price INT DEFAULT 0 NOT NULL,
         image VARCHAR(255),
         start_at DATETIME NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

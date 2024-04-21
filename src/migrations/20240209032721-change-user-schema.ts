@@ -4,13 +4,13 @@ export default {
   up: async (queryInterface: QueryInterface) => {
     await queryInterface.sequelize.query(`
       ALTER TABLE users
-        ADD COLUMN mon TINYINT DEFAULT 0 NOT NULL AFTER self_intro,
-        ADD COLUMN tue TINYINT DEFAULT 0 NOT NULL AFTER mon,
-        ADD COLUMN wed TINYINT DEFAULT 0 NOT NULL AFTER tue,
-        ADD COLUMN thu TINYINT DEFAULT 0 NOT NULL AFTER wed,
-        ADD COLUMN fri TINYINT DEFAULT 0 NOT NULL AFTER thu,
-        ADD COLUMN sat TINYINT DEFAULT 0 NOT NULL AFTER fri,
-        ADD COLUMN sun TINYINT DEFAULT 0 NOT NULL AFTER sat;
+        ADD COLUMN mon BOOLEAN NOT NULL AFTER self_intro,
+        ADD COLUMN tue BOOLEAN NOT NULL AFTER mon,
+        ADD COLUMN wed BOOLEAN NOT NULL AFTER tue,
+        ADD COLUMN thu BOOLEAN NOT NULL AFTER wed,
+        ADD COLUMN fri BOOLEAN NOT NULL AFTER thu,
+        ADD COLUMN sat BOOLEAN NOT NULL AFTER fri,
+        ADD COLUMN sun BOOLEAN NOT NULL AFTER sat;
     `)
   },
 
