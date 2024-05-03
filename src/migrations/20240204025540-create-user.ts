@@ -10,7 +10,7 @@ export default {
         password VARCHAR(255) NOT NULL,
         nickname VARCHAR(20),
         avatar VARCHAR(255),
-        is_teacher BOOLEAN NOT NULL,
+        is_teacher BOOLEAN DEFAULT 0 NOT NULL,
         teach_style VARCHAR(255),
         self_intro TEXT,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
