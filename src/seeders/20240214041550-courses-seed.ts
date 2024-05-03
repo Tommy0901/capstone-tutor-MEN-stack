@@ -35,7 +35,7 @@ export default {
           teachingCategories.length,
           Math.ceil(Math.random() * teachingCategories.length)
         )
-        const category = JSON.stringify(randomIndexes.map(index => teachingCategories[index]))
+        const category = JSON.stringify(randomIndexes.map(i => teachingCategories[i]))
         return {
           teacher_id: teacherId,
           category,
@@ -56,7 +56,7 @@ export default {
           teachingCategories.length,
           Math.ceil(Math.random() * teachingCategories.length)
         )
-        const category = JSON.stringify(randomIndexes.map(index => teachingCategories[index]))
+        const category = JSON.stringify(randomIndexes.map(i => teachingCategories[i]))
         return {
           teacher_id: teacherId,
           category,
