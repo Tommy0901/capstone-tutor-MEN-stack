@@ -61,4 +61,6 @@ export class User extends Model<User> {
 
   @HasMany(() => Registration, { foreignKey: 'studentId' })
     registrations!: Registration[]
+
+  ratingAverage: number | undefined
 }

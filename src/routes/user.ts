@@ -10,6 +10,9 @@ class UserRoute extends Route {
   }
 
   protected setRoutes (): void {
+    this.router.get('/home',
+      this.userController.homepage.bind(this.userController)
+    )
     this.router.post('/signup',
       this.userController.signUp.bind(this.userController)
     )

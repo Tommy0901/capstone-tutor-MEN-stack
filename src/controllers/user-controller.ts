@@ -1,11 +1,13 @@
 import { type Request, type Response, type NextFunction } from 'express'
+import sequelize, { Op } from 'sequelize'
 import bcrypt from 'bcryptjs'
 import dotenv from 'dotenv'
 import jwt from 'jsonwebtoken'
 
-import { Admin, User } from '../models'
+import { Admin, User, Category, Course, Registration, TeachingCategory } from '../models'
 
 import { errorMsg } from '../helpers/message-helper'
+import { getOffset, getPagination } from '../helpers/pagination-helper'
 import { currentTaipeiTime } from '../helpers/time-helper'
 import { allNotNullOrEmpty } from '../helpers/validation-helper'
 
@@ -19,6 +21,74 @@ interface RequestBody {
 if (process.env.NODE_ENV !== 'production') dotenv.config()
 
 class UserController {
+  homepage (req: Request, res: Response, next: NextFunction): void {
+    const { query: { categoryId, keyword } } = req
+    const likeKeywordObject = { [Op.like]: `%${keyword as string}%` }
+    const [name, nation, nickname, teachStyle, selfIntro] = Array.from({ length: 5 }, () => likeKeywordObject)
+    const searchFields = [{ name }, { nation }, { nickname }, { teachStyle }, { selfIntro }]
+    const limit = 6
+    const page = req.query.page ?? 1
+
+    void (async () => {
+      const [teachers, students, categories] = await Promise.all([
+        User.findAndCountAll({
+          attributes: ['id', 'name', 'nation', 'nickname', 'avatar', 'teachStyle', 'selfIntro'],
+          where: {
+            isTeacher: true,
+            ...(keyword != null) ? { [Op.or]: searchFields } : {}
+          },
+          include: {
+            model: TeachingCategory,
+            attributes: ['categoryId'],
+            ...(categoryId != null) ? { where: { categoryId } } : {},
+            include: [{
+              model: Category,
+              attributes: ['name']
+            }]
+          },
+          group: ['id'],
+          limit,
+          offset: getOffset(limit, page as number)
+        }),
+        Registration.findAll({
+          attributes: [
+            'studentId',
+            [sequelize.fn('SUM', sequelize.col('course.duration')), 'studyHours']
+          ],
+          include: [
+            { model: User, attributes: ['name', 'nickname', 'avatar'] },
+            { model: Course, attributes: [], where: { startAt: { [Op.lt]: new Date() } } }
+          ],
+          group: ['studentId'],
+          limit: 10,
+          order: [['studyHours', 'DESC']]
+        }),
+        Category.findAll({
+          attributes: ['id', 'name'],
+          order: [['id', 'ASC']]
+        })
+      ])
+      const whereCondition = { rating: { [Op.not]: null } }
+      const ratingAverage = await Registration.findAll({
+        attributes: [[sequelize.fn('AVG', sequelize.col('rating')), 'ratingAverage']],
+        include: { model: Course, attributes: [], where: { teacherId: { [Op.in]: teachers.rows.map(i => i.dataValues.id) } } },
+        where: whereCondition,
+        group: ['course.teacher_id']
+      })
+      const data = { ...getPagination(limit, page as number, teachers.count.length) }
+      data.categories = categories
+      teachers.rows
+        .forEach((teacher, i) => { teacher.dataValues.ratingAverage = ratingAverage[i]?.dataValues.ratingAverage })
+      data.teachers = teachers.rows
+      data.students = students
+        .map(student => {
+          student.dataValues.studyHours = (student.dataValues.studyHours != null) ? +student.dataValues.studyHours / 60 : undefined
+          return student
+        })
+      res.json({ data })
+    })()
+  }
+
   signUp (req: Request, res: Response, next: NextFunction): Record<string, any> | undefined {
     const { name, email, password, confirmedPassword } = req.body as RequestBody
 

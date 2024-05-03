@@ -23,4 +23,7 @@ export class Registration extends Model<Registration> {
 
   @BelongsTo(() => Course)
     course!: Course
+
+  ratingAverage: number | undefined
+  studyHours: number | undefined
 }
