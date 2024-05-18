@@ -63,4 +63,6 @@ export class User extends Model<User> {
     registrations!: Registration[]
 
   ratingAverage: number | undefined
+  studyHours: number | undefined
+  studyRank: number | undefined
 }

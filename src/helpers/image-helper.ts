@@ -1,9 +1,21 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, type PutObjectCommandInput, type DeleteObjectCommandInput } from '@aws-sdk/client-s3'
 import { createApi } from 'unsplash-js'
+import fs from 'fs'
 import axios from 'axios'
 import dotenv from 'dotenv'
 
 if (process.env.NODE_ENV !== 'production') dotenv.config()
+
+export interface MulterFile {
+  fieldname: string
+  originalname: string
+  encoding: string
+  mimetype: string
+  destination: string
+  filename: string
+  path: string
+  size: number
+}
 
 const {
   AWS_ACCESS_KEY_ID,
@@ -64,6 +76,20 @@ const deleteFileFromS3 = async (fileNumber: number): Promise<void> => {
     console.error(`Error deleting file from S3: ${(err as { message: string }).message}`)
     throw err
   }
+}
+
+export async function uploadSingleImageToS3 (file: MulterFile, userId: number): Promise<string> {
+  const fileStream = fs.createReadStream(file.path)
+
+  const uploadParams: PutObjectCommandInput = {
+    Bucket,
+    Key: `${userId}.jpg`,
+    Body: fileStream
+  }
+
+  await s3Client.send(new PutObjectCommand(uploadParams))
+
+  return `https://capstone-tutor.s3.ap-northeast-1.amazonaws.com/${userId}.jpg`
 }
 
 export async function uploadImageToS3 (API_URL: string, fileNumber: number): Promise<void> {

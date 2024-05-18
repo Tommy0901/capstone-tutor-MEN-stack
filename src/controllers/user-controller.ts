@@ -10,12 +10,23 @@ import { errorMsg } from '../helpers/message-helper'
 import { getOffset, getPagination } from '../helpers/pagination-helper'
 import { currentTaipeiTime } from '../helpers/time-helper'
 import { allNotNullOrEmpty } from '../helpers/validation-helper'
+import { type MulterFile, uploadSingleImageToS3 } from '../helpers/image-helper'
 
 interface RequestBody {
   name: string
   email: string
   password: string
   confirmedPassword: string
+}
+
+interface AuthenticatedRequest extends Request {
+  user: {
+    id: number
+    isTeacher: number
+    email: string
+    iat: number
+    exp: number
+  }
 }
 
 if (process.env.NODE_ENV !== 'production') dotenv.config()
@@ -89,7 +100,7 @@ class UserController {
     })()
   }
 
-  signUp (req: Request, res: Response, next: NextFunction): Record<string, any> | undefined {
+  signUp (req: Request, res: Response, next: NextFunction): Record<string, string> | undefined {
     const { name, email, password, confirmedPassword } = req.body as RequestBody
 
     if (allNotNullOrEmpty(name, email, password)) {
@@ -133,7 +144,7 @@ class UserController {
     })()
   }
 
-  signIn (req: Request, res: Response, next: NextFunction): Record<string, any> | undefined {
+  signIn (req: Request, res: Response, next: NextFunction): Record<string, string> | undefined {
     const { email, password } = req.body as RequestBody
 
     if (allNotNullOrEmpty(email, password)) {
@@ -169,6 +180,104 @@ class UserController {
               })
               : errorMsg(res, 500, 'JWT token encountered a generation error.')
           : errorMsg(res, 401, 'Incorrect username or password!')
+      } catch (err) {
+        next(err)
+      }
+    })()
+  }
+
+  getStudent (req: Request, res: Response, next: NextFunction): void {
+    const { params: { id } } = req as AuthenticatedRequest
+
+    void (async () => {
+      try {
+        const [user, rank] = await Promise.all([
+          User.findByPk(id, {
+            attributes: ['id', 'name', 'email', 'nickname', 'avatar', 'selfIntro'],
+            include: {
+              model: Registration,
+              attributes: ['id', 'studentId', 'courseId', 'rating', 'comment'],
+              include: [{
+                model: Course,
+                attributes: ['id', 'teacherId', 'category', 'name', 'intro', 'image', 'link', 'startAt', 'duration']
+              }]
+            }
+          }),
+          Registration.findAll({
+            attributes: [
+              'studentId',
+              [sequelize.fn('SUM', sequelize.col('course.duration')), 'studyHours']
+            ],
+            include:
+            { model: Course, attributes: [], where: { startAt: { [Op.lt]: new Date() } } },
+            group: ['studentId'],
+            order: [['studyHours', 'DESC']]
+          })])
+
+        if (user == null) return errorMsg(res, 404, "Student didn't exist!")
+
+        user.dataValues.registrations = user.dataValues.registrations
+          .map(item => {
+            (item.dataValues.course.dataValues.startAt as unknown as string) = currentTaipeiTime(item.dataValues.course.dataValues.startAt)
+            return item
+          })
+        user.dataValues.studyRank = rank.findIndex(i => i.dataValues.studentId === +id) + 1
+        const studyHours = rank[user.dataValues.studyRank - 1]?.dataValues.studyHours
+        user.dataValues.studyHours = studyHours != null ? studyHours / 60 : 0
+
+        res.json({ status: 'success', data: user })
+      } catch (err) {
+        next(err)
+      }
+    })()
+  }
+
+  editStudent (req: Request, res: Response, next: NextFunction): void {
+    void (async () => {
+      try {
+        const { params: { id }, user: { id: userId } } = req as AuthenticatedRequest
+
+        if (+id !== userId) return errorMsg(res, 403, 'Permission denied!')
+
+        const user = await User
+          .findByPk((id), {
+            attributes: ['id', 'name', 'email', 'nickname', 'avatar', 'selfIntro', 'createdAt', 'updatedAt'],
+            raw: true
+          })
+
+        if (user == null) return errorMsg(res, 404, "Student didn't exist!")
+
+        user.createdAt = currentTaipeiTime(user.createdAt as string)
+        user.updatedAt = currentTaipeiTime(user.updatedAt as string)
+
+        res.json({ status: 'success', data: user })
+      } catch (err) {
+        next(err)
+      }
+    })()
+  }
+
+  putStudent (req: Request, res: Response, next: NextFunction): void {
+    void (async () => {
+      try {
+        const { params: { id }, user: { id: userId }, body: { name, nickname, selfIntro }, file } = req as AuthenticatedRequest
+
+        if (+id !== userId) return errorMsg(res, 403, 'Insufficient permissions. Update failed!')
+
+        if (name == null) return errorMsg(res, 401, 'Please enter name.')
+
+        const [filePath, user] = await Promise.all([uploadSingleImageToS3(file as MulterFile, userId),
+          User.findByPk(id, { attributes: ['id', 'name', 'email', 'nickname', 'avatar', 'selfIntro', 'createdAt', 'updatedAt'] })
+        ])
+
+        if (user == null) return errorMsg(res, 404, "Student didn't exist!")
+
+        await user.update({ name, nickname, avatar: filePath ?? user.avatar, selfIntro })
+
+        user.dataValues.createdAt = currentTaipeiTime(user.dataValues.createdAt as string)
+        user.dataValues.updatedAt = currentTaipeiTime(user.dataValues.updatedAt as string)
+
+        res.json({ status: 'success', data: user })
       } catch (err) {
         next(err)
       }
