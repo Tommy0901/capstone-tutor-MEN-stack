@@ -78,7 +78,9 @@ const deleteFileFromS3 = async (fileNumber: number): Promise<void> => {
   }
 }
 
-export async function uploadSingleImageToS3 (file: MulterFile, userId: number): Promise<string> {
+export async function uploadSingleImageToS3 (file: MulterFile, userId: number): Promise<string | undefined> {
+  if (file == null) return undefined
+
   const fileStream = fs.createReadStream(file.path)
 
   const uploadParams: PutObjectCommandInput = {

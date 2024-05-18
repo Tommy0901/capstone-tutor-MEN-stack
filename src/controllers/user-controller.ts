@@ -6,10 +6,11 @@ import jwt from 'jsonwebtoken'
 
 import { Admin, User, Category, Course, Registration, TeachingCategory } from '../models'
 
+import countries from '../config/conuntries'
 import { errorMsg } from '../helpers/message-helper'
 import { getOffset, getPagination } from '../helpers/pagination-helper'
 import { currentTaipeiTime } from '../helpers/time-helper'
-import { allNotNullOrEmpty } from '../helpers/validation-helper'
+import { allNotNullOrEmpty, booleanObjects } from '../helpers/validation-helper'
 import { type MulterFile, uploadSingleImageToS3 } from '../helpers/image-helper'
 
 interface RequestBody {
@@ -27,6 +28,10 @@ interface AuthenticatedRequest extends Request {
     iat: number
     exp: number
   }
+}
+
+interface UserData extends User {
+  category: number[] // Add the category property
 }
 
 if (process.env.NODE_ENV !== 'production') dotenv.config()
@@ -187,7 +192,7 @@ class UserController {
   }
 
   getStudent (req: Request, res: Response, next: NextFunction): void {
-    const { params: { id } } = req as AuthenticatedRequest
+    const { user: { id } } = req as AuthenticatedRequest
 
     void (async () => {
       try {
@@ -278,6 +283,167 @@ class UserController {
         user.dataValues.updatedAt = currentTaipeiTime(user.dataValues.updatedAt as string)
 
         res.json({ status: 'success', data: user })
+      } catch (err) {
+        next(err)
+      }
+    })()
+  }
+
+  patchTeacher (req: Request, res: Response, next: NextFunction): void {
+    const { params: { id }, user: { id: userId, isTeacher } } = req as AuthenticatedRequest
+
+    void (async () => {
+      try {
+        if (isTeacher !== 0) return errorMsg(res, 403, 'Duplicate application for teacher. Update failed!')
+
+        if (Number(id) !== userId) return errorMsg(res, 403, 'Insufficient permissions. Update failed!')
+
+        await User.update({ isTeacher: true }, { where: { id } })
+
+        const user = await User
+          .findByPk(id, {
+            attributes: ['id', 'name', 'email', 'isTeacher', 'createdAt', 'updatedAt'],
+            raw: true
+          })
+
+        if (user == null) return errorMsg(res, 404, "Teacher didn't exist!")
+
+        user.createdAt = currentTaipeiTime(user.createdAt as string)
+        user.updatedAt = currentTaipeiTime(user.updatedAt as string)
+
+        res.json({ status: 'success', data: user })
+      } catch (err) {
+        next(err)
+      }
+    })()
+  }
+
+  getTeacher (req: Request, res: Response, next: NextFunction): void {
+    const { params: { id } } = req
+
+    void (async () => {
+      try {
+        const [user, registrations] = await Promise.all([
+          User.findOne({
+            where: { id, isTeacher: true },
+            include: [{
+              model: TeachingCategory,
+              attributes: ['categoryId'],
+              include: [{
+                model: Category,
+                attributes: ['name']
+              }]
+            }, {
+              model: Course,
+              attributes: ['id', 'teacherId', 'category', 'name', 'intro', 'image', 'link', 'startAt', 'duration'],
+              include: [{ model: Registration, attributes: ['rating', 'comment'] }]
+            }]
+          }),
+          Registration.findAll({
+            attributes: [[sequelize.fn('AVG', sequelize.col('rating')), 'ratingAverage']],
+            include: { model: Course, attributes: [], where: { teacherId: id } },
+            group: ['course.teacher_id']
+          })
+        ])
+
+        if (user == null) return errorMsg(res, 404, "Teacher didn't exist!")
+
+        user.dataValues.courses = user.dataValues.courses
+          .map(item => {
+            (item.dataValues.startAt as unknown as string) = currentTaipeiTime(item.dataValues.startAt)
+            return item
+          })
+
+        const { password, isTeacher, createdAt, updatedAt, ...data } = user.toJSON()
+        data.ratingAverage = registrations[0]?.toJSON().ratingAverage ?? undefined
+
+        res.json({ status: 'success', data })
+      } catch (err) {
+        next(err)
+      }
+    })()
+  }
+
+  editTeacher (req: Request, res: Response, next: NextFunction): void {
+    const { params: { id }, user: { id: userId } } = req as AuthenticatedRequest
+
+    void (async () => {
+      try {
+        if (Number(id) !== userId) return errorMsg(res, 403, 'Permission denied!')
+
+        const user = await User.findByPk(id, {
+          include: {
+            model: TeachingCategory,
+            attributes: ['categoryId'],
+            include: [{
+              model: Category,
+              attributes: ['name']
+            }]
+          }
+        })
+
+        if (user == null) return errorMsg(res, 404, "Teacher didn't exist!")
+
+        const { password, isTeacher, ...data } = user.toJSON()
+
+        data.createdAt = currentTaipeiTime(data.createdAt as string)
+        data.updatedAt = currentTaipeiTime(data.updatedAt as string)
+
+        res.json({ status: 'success', data })
+      } catch (err) {
+        next(err)
+      }
+    })()
+  }
+
+  putTeacher (req: Request, res: Response, next: NextFunction): void {
+    const { params: { id }, user: { id: userId }, file } = req as AuthenticatedRequest
+    const { body: { name, nation, nickname, teachStyle, selfIntro, category } } = req
+    const { body: { mon, tue, wed, thu, fri, sat, sun } } = req
+    const whichDay = { mon, tue, wed, thu, fri, sat, sun }
+
+    void (async () => {
+      try {
+        if (Number(id) !== userId) return errorMsg(res, 403, 'Insufficient permissions. Update failed!')
+
+        if (name == null) return errorMsg(res, 400, 'Please enter name.')
+
+        if (!Array.isArray(category) || category?.length < 1) return errorMsg(res, 400, 'Please enter categoryId array.')
+
+        const hasDuplicates = category.filter((value, index, self) => self.indexOf(value) !== index).length > 0
+        if (hasDuplicates) return errorMsg(res, 400, 'CategoryId has duplicates.')
+
+        if (!booleanObjects(whichDay)) return errorMsg(res, 400, 'Which day input was invalid.')
+
+        if (!Object.keys(countries).includes(nation as string)) return errorMsg(res, 400, 'Input nation code was invalid.')
+
+        let categoryId = await Category.findAll({ raw: true })
+        categoryId = categoryId.map(i => String(i.id)) as unknown as Category[]
+
+        if (!(category as Category[]).every(i => categoryId.includes(i))) return errorMsg(res, 400, 'Please enter correct categoryId.')
+
+        const [filePath, user] = await Promise.all([
+          uploadSingleImageToS3(file as MulterFile, userId), User.findByPk(id), TeachingCategory.destroy({ where: { teacherId: id } })
+        ])
+
+        const bulkCreateData = Array.from(
+          { length: category.length },
+          (_, i) => ({ teacherId: id, categoryId: category[i] as number })
+        ) as unknown as TeachingCategory[]
+        const teachingCategory = await TeachingCategory.bulkCreate(bulkCreateData)
+        const updateFields = { name, nation, nickname, teachStyle, selfIntro, ...whichDay }
+
+        if (user == null) return errorMsg(res, 404, "Teacher didn't exist!")
+
+        await user.update({ avatar: filePath ?? user.avatar, ...updateFields })
+
+        const { password, isTeacher, ...data } = user.toJSON() as unknown as UserData
+
+        data.category = teachingCategory.map(i => i.dataValues.categoryId)
+        data.createdAt = currentTaipeiTime(data.createdAt as string)
+        data.updatedAt = currentTaipeiTime(data.updatedAt as string)
+
+        res.json({ status: 'success', data })
       } catch (err) {
         next(err)
       }

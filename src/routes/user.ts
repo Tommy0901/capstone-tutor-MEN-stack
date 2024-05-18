@@ -33,6 +33,21 @@ class UserRoute extends Route {
     this.router.get('/student/:id', authenticated,
       this.userController.getStudent.bind(this.userController)
     )
+    this.router.get('/teacher/:id/personal', authenticated,
+      this.userController.getTeacher.bind(this.userController)
+    )
+    this.router.get('/teacher/:id/edit', authenticated,
+      this.userController.editTeacher.bind(this.userController)
+    )
+    this.router.put('/teacher/:id', authenticated, upload.single('avatar') as RequestHandler,
+      this.userController.putTeacher.bind(this.userController)
+    )
+    this.router.patch('/teacher/:id', authenticated,
+      this.userController.patchTeacher.bind(this.userController)
+    )
+    this.router.get('/teacher/:id',
+      this.userController.getTeacher.bind(this.userController)
+    )
   }
 }
 
