@@ -78,20 +78,20 @@ const deleteFileFromS3 = async (fileNumber: number): Promise<void> => {
   }
 }
 
-export async function uploadSingleImageToS3 (file: MulterFile, userId: number): Promise<string | undefined> {
+export async function uploadSingleImageToS3 (file: MulterFile, imageName: string | number): Promise<string | undefined> {
   if (file == null) return undefined
 
   const fileStream = fs.createReadStream(file.path)
 
   const uploadParams: PutObjectCommandInput = {
     Bucket,
-    Key: `${userId}.jpg`,
+    Key: `${imageName}.jpg`,
     Body: fileStream
   }
 
   await s3Client.send(new PutObjectCommand(uploadParams))
 
-  return `https://capstone-tutor.s3.ap-northeast-1.amazonaws.com/${userId}.jpg`
+  return `https://capstone-tutor.s3.ap-northeast-1.amazonaws.com/${imageName}.jpg`
 }
 
 export async function uploadImageToS3 (API_URL: string, fileNumber: number): Promise<void> {

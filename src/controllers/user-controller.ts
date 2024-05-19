@@ -109,7 +109,7 @@ class UserController {
     const { name, email, password, confirmedPassword } = req.body as RequestBody
 
     if (allNotNullOrEmpty(name, email, password)) {
-      return errorMsg(res, 400, 'Name, email, and password are required fields.')
+      return errorMsg(res, 400, 'Name, email, password are required fields.')
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -400,7 +400,7 @@ class UserController {
     const { params: { id }, user: { id: userId }, file } = req as AuthenticatedRequest
     const { body: { name, nation, nickname, teachStyle, selfIntro, category } } = req
     const { body: { mon, tue, wed, thu, fri, sat, sun } } = req
-    const whichDay = { mon, tue, wed, thu, fri, sat, sun }
+    const availableDays: Record<string, boolean> = { mon, tue, wed, thu, fri, sat, sun }
 
     void (async () => {
       try {
@@ -413,7 +413,7 @@ class UserController {
         const hasDuplicates = category.filter((value, index, self) => self.indexOf(value) !== index).length > 0
         if (hasDuplicates) return errorMsg(res, 400, 'CategoryId has duplicates.')
 
-        if (!booleanObjects(whichDay)) return errorMsg(res, 400, 'Which day input was invalid.')
+        if (!booleanObjects(availableDays)) return errorMsg(res, 400, 'Please select available days first.')
 
         if (!Object.keys(countries).includes(nation as string)) return errorMsg(res, 400, 'Input nation code was invalid.')
 
@@ -431,7 +431,7 @@ class UserController {
           (_, i) => ({ teacherId: id, categoryId: category[i] as number })
         ) as unknown as TeachingCategory[]
         const teachingCategory = await TeachingCategory.bulkCreate(bulkCreateData)
-        const updateFields = { name, nation, nickname, teachStyle, selfIntro, ...whichDay }
+        const updateFields = { name, nation, nickname, teachStyle, selfIntro, ...availableDays }
 
         if (user == null) return errorMsg(res, 404, "Teacher didn't exist!")
 

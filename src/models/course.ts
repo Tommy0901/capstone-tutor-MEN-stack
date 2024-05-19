@@ -9,7 +9,7 @@ export class Course extends Model<Course> {
     teacherId!: number
 
   @Column(DataType.JSON)
-    category!: object
+    category!: string[]
 
   @Column
     name!: string
