@@ -32,11 +32,11 @@ if (process.env.NODE_ENV !== 'production') dotenv.config()
 class UserController {
   homepage (req: Request, res: Response, next: NextFunction): void {
     const { query: { categoryId, keyword } } = req
-    const likeKeywordObject = { [Op.like]: `%${keyword as string}%` }
-    const [name, nation, nickname, teachStyle, selfIntro] = Array.from({ length: 5 }, () => likeKeywordObject)
-    const searchFields = [{ name }, { nation }, { nickname }, { teachStyle }, { selfIntro }]
-    const limit = 6
     const page = req.query.page ?? 1
+    const limit = 6
+    const substringQuery = { [Op.substring]: keyword }
+    const searchFields = ['name', 'nation', 'nickname', 'teachStyle', 'selfIntro']
+      .map(field => ({ [field]: substringQuery }))
 
     void (async () => {
       const [teachers, students, categories] = await Promise.all([
@@ -44,12 +44,12 @@ class UserController {
           attributes: ['id', 'name', 'nation', 'nickname', 'avatar', 'teachStyle', 'selfIntro'],
           where: {
             isTeacher: true,
-            ...(keyword != null) ? { [Op.or]: searchFields } : {}
+            ...(keyword != null) && { [Op.or]: searchFields }
           },
           include: {
             model: TeachingCategory,
             attributes: ['categoryId'],
-            ...(categoryId != null) ? { where: { categoryId } } : {},
+            ...(categoryId != null) && { where: { categoryId } },
             include: [{
               model: Category,
               attributes: ['name']
@@ -77,23 +77,37 @@ class UserController {
           order: [['id', 'ASC']]
         })
       ])
-      const whereCondition = { rating: { [Op.not]: null } }
+      const whereCondition = { teacherId: { [Op.in]: teachers.rows.map(i => i.dataValues.id) } }
+
       const ratingAverage = await Registration.findAll({
-        attributes: [[sequelize.fn('AVG', sequelize.col('rating')), 'ratingAverage']],
-        include: { model: Course, attributes: [], where: { teacherId: { [Op.in]: teachers.rows.map(i => i.dataValues.id) } } },
-        where: whereCondition,
+        attributes: [
+          [sequelize.fn('AVG', sequelize.col('rating')), 'ratingAverage']
+        ],
+        include: [
+          { model: Course, attributes: [], where: whereCondition }
+        ],
         group: ['course.teacher_id']
       })
-      const data = { ...getPagination(limit, page as number, teachers.count.length) }
-      data.categories = categories
-      teachers.rows
-        .forEach((teacher, i) => { teacher.dataValues.ratingAverage = ratingAverage[i]?.dataValues.ratingAverage })
-      data.teachers = teachers.rows
-      data.students = students
-        .map(student => {
-          student.dataValues.studyHours = (student.dataValues.studyHours != null) ? +student.dataValues.studyHours / 60 : undefined
-          return student
-        })
+
+      const teachersWithAverageRating = teachers.rows
+        .map((teacher, i) => ({
+          ...teacher.dataValues,
+          ratingAverage: ratingAverage[i]?.dataValues.ratingAverage
+        }))
+
+      const studentsWithStudyHours = students
+        .map(student => ({
+          ...student.dataValues,
+          studyHours: (student.dataValues.studyHours != null) ? +student.dataValues.studyHours / 60 : null
+        }))
+
+      const data = {
+        ...getPagination(limit, page as number, teachers.count.length),
+        categories,
+        teachers: teachersWithAverageRating,
+        students: studentsWithStudyHours
+      }
+
       res.json({ data })
     })()
   }
@@ -133,8 +147,10 @@ class UserController {
 
         const user = await User.create(newUser as User)
         const { password: removedPassword, ...data } = user.toJSON()
+
         data.updatedAt = currentTaipeiTime(data.updatedAt as string)
         data.createdAt = currentTaipeiTime(data.createdAt as string)
+
         res.json({ data })
       } catch (err) {
         next(err)
