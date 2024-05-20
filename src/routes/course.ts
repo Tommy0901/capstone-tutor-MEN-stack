@@ -13,6 +13,9 @@ class CourseRoute extends Route {
   }
 
   protected setRoutes (): void {
+    this.router.delete('/course/:courseId', authenticated,
+      this.courseController.deleteCourse.bind(this.courseController)
+    )
     this.router.put('/course/:courseId', authenticated, upload.single('image'),
       this.courseController.putCourse.bind(this.courseController)
     )

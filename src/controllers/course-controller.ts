@@ -129,11 +129,16 @@ class CourseController {
             }]
           }]
         })
+
         if (course == null) return errorMsg(res, 404, "Course didn't exist!")
 
         if (id !== course.teacherId) return errorMsg(res, 403, 'Insufficient permissions.')
 
-        res.json({ status: 'success', data: course })
+        const { ...data } = course.dataValues as FormattedCourse
+
+        data.startAt = formatCourseStartAt(data.startAt)
+
+        res.json({ status: 'success', data })
       } catch (err) {
         next(err)
       }
@@ -221,6 +226,37 @@ class CourseController {
         data.startAt = formatCourseStartAt(startAt + '')
 
         res.json({ status: 'success', data })
+      } catch (err) {
+        next(err)
+      }
+    })()
+  }
+
+  deleteCourse (req: Request, res: Response, next: NextFunction): void {
+    const { params: { courseId }, user: { id } } = req as AuthenticatedRequest
+
+    void (async () => {
+      try {
+        const course = await Course.findByPk(courseId)
+
+        if (course == null) return errorMsg(res, 404, "Course didn't exist!")
+
+        if (id !== course.teacherId) return errorMsg(res, 403, 'Insufficient permissions.')
+
+        const { createdAt, updatedAt, ...data } = course.dataValues as FormattedCourse
+
+        data.startAt = formatCourseStartAt(data.startAt)
+
+        const result = await Course.destroy({
+          where: {
+            id: courseId,
+            teacherId: id
+          }
+        }) === 1
+
+        !result
+          ? errorMsg(res, 500, 'Delete course failed, Database Error.')
+          : res.json({ status: 'success', data })
       } catch (err) {
         next(err)
       }

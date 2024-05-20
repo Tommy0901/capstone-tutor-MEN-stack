@@ -1,5 +1,3 @@
-import { type RequestHandler } from 'express'
-
 import UserController from '../controllers/user-controller'
 import Route from './route'
 
@@ -27,7 +25,7 @@ class UserRoute extends Route {
     this.router.get('/student/:id/edit', authenticated,
       this.userController.editStudent.bind(this.userController)
     )
-    this.router.put('/student/:id', authenticated, upload.single('avatar') as RequestHandler,
+    this.router.put('/student/:id', authenticated, upload.single('avatar'),
       this.userController.putStudent.bind(this.userController)
     )
     this.router.get('/student/:id', authenticated,
@@ -39,7 +37,7 @@ class UserRoute extends Route {
     this.router.get('/teacher/:id/edit', authenticated,
       this.userController.editTeacher.bind(this.userController)
     )
-    this.router.put('/teacher/:id', authenticated, upload.single('avatar') as RequestHandler,
+    this.router.put('/teacher/:id', authenticated, upload.single('avatar'),
       this.userController.putTeacher.bind(this.userController)
     )
     this.router.patch('/teacher/:id', authenticated,
