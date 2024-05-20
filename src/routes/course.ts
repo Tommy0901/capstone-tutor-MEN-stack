@@ -25,6 +25,9 @@ class CourseRoute extends Route {
     this.router.post('/course', authenticated, upload.single('image'),
       this.courseController.postCourse.bind(this.courseController)
     )
+    this.router.get('/course', authenticated,
+      this.courseController.getCoursesByTeacher.bind(this.courseController)
+    )
   }
 }
 

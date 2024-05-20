@@ -7,6 +7,9 @@ import jwt from 'jsonwebtoken'
 import { Admin, User, Category, Course, Registration, TeachingCategory } from '../models'
 
 import countries from '../config/conuntries'
+
+import { type AuthenticatedRequest } from '../middlewares/auth-handler'
+
 import { errorMsg } from '../helpers/message-helper'
 import { getOffset, getPagination } from '../helpers/pagination-helper'
 import { currentTaipeiTime } from '../helpers/time-helper'
@@ -18,16 +21,6 @@ interface RequestBody {
   email: string
   password: string
   confirmedPassword: string
-}
-
-interface AuthenticatedRequest extends Request {
-  user: {
-    id: number
-    isTeacher: number
-    email: string
-    iat: number
-    exp: number
-  }
 }
 
 interface UserData extends User {

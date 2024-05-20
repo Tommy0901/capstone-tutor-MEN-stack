@@ -3,6 +3,8 @@ import { Op } from 'sequelize'
 
 import { User, Category, Course, Registration } from '../models'
 
+import { type AuthenticatedRequest } from '../middlewares/auth-handler'
+
 import { errorMsg } from '../helpers/message-helper'
 import { type MulterFile, uploadSingleImageToS3 } from '../helpers/image-helper'
 import { allNotNullOrEmpty, sanitizeFileName } from '../helpers/validation-helper'
@@ -17,17 +19,30 @@ import {
   formattedTimestamp
 } from '../helpers/time-helper'
 
-interface AuthenticatedRequest extends Request {
-  user: {
-    id: number
-    isTeacher: number
-    email: string
-    iat: number
-    exp: number
-  }
-}
-
 class CourseController {
+  getCoursesByTeacher (req: Request, res: Response, next: NextFunction): void {
+    const { user: { id } } = req as AuthenticatedRequest
+
+    void (async () => {
+      try {
+        const courses = await Course.findAll({
+          attributes: ['id', 'teacherId', 'category', 'name', 'intro', 'link', 'duration', 'image', 'startAt'],
+          where: { teacherId: id },
+          raw: true
+        })
+
+        const data = courses.map(course => ({
+          ...course,
+          startAt: formatCourseStartAt(course.startAt)
+        }))
+
+        res.json({ status: 'success', data })
+      } catch (err) {
+        next(err)
+      }
+    })()
+  }
+
   postCourse (req: Request, res: Response, next: NextFunction): Record<string, any> | undefined {
     const { user: { id, isTeacher } } = req as AuthenticatedRequest
     const { body: { category, name, intro, link, duration, startAt }, file } = req
