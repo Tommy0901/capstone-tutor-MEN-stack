@@ -32,83 +32,87 @@ if (process.env.NODE_ENV !== 'production') dotenv.config()
 class UserController {
   homepage (req: Request, res: Response, next: NextFunction): void {
     const { query: { categoryId, keyword } } = req
-    const page = req.query.page ?? 1
+    const page = (req.query.page != null && req.query.page !== '') ? req.query.page : 1
     const limit = 6
     const substringQuery = { [Op.substring]: keyword }
     const searchFields = ['name', 'nation', 'nickname', 'teachStyle', 'selfIntro']
       .map(field => ({ [field]: substringQuery }))
 
     void (async () => {
-      const [teachers, students, categories] = await Promise.all([
-        User.findAndCountAll({
-          attributes: ['id', 'name', 'nation', 'nickname', 'avatar', 'teachStyle', 'selfIntro'],
-          where: {
-            isTeacher: true,
-            ...(keyword != null) && { [Op.or]: searchFields }
-          },
-          include: {
-            model: TeachingCategory,
-            attributes: ['categoryId'],
-            ...(categoryId != null) && { where: { categoryId } },
-            include: [{
-              model: Category,
-              attributes: ['name']
-            }]
-          },
-          group: ['id'],
-          limit,
-          offset: getOffset(limit, page as number)
-        }),
-        Registration.findAll({
+      try {
+        const [teachers, students, categories] = await Promise.all([
+          User.findAndCountAll({
+            attributes: ['id', 'name', 'nation', 'nickname', 'avatar', 'teachStyle', 'selfIntro'],
+            where: {
+              isTeacher: true,
+              ...(keyword != null && keyword === '') && { [Op.or]: searchFields }
+            },
+            include: {
+              model: TeachingCategory,
+              attributes: ['categoryId'],
+              ...(categoryId != null && categoryId === '') && { where: { categoryId } },
+              include: [{
+                model: Category,
+                attributes: ['name']
+              }]
+            },
+            group: ['id'],
+            limit,
+            offset: getOffset(limit, page as number)
+          }),
+          Registration.findAll({
+            attributes: [
+              'studentId',
+              [sequelize.fn('SUM', sequelize.col('course.duration')), 'studyHours']
+            ],
+            include: [
+              { model: User, attributes: ['name', 'nickname', 'avatar'] },
+              { model: Course, attributes: [], where: { startAt: { [Op.lt]: new Date() } } }
+            ],
+            group: ['studentId'],
+            limit: 10,
+            order: [['studyHours', 'DESC']]
+          }),
+          Category.findAll({
+            attributes: ['id', 'name'],
+            order: [['id', 'ASC']]
+          })
+        ])
+        const whereCondition = { teacherId: { [Op.in]: teachers.rows.map(i => i.dataValues.id) } }
+
+        const ratingAverage = await Registration.findAll({
           attributes: [
-            'studentId',
-            [sequelize.fn('SUM', sequelize.col('course.duration')), 'studyHours']
+            [sequelize.fn('AVG', sequelize.col('rating')), 'ratingAverage']
           ],
           include: [
-            { model: User, attributes: ['name', 'nickname', 'avatar'] },
-            { model: Course, attributes: [], where: { startAt: { [Op.lt]: new Date() } } }
+            { model: Course, attributes: [], where: whereCondition }
           ],
-          group: ['studentId'],
-          limit: 10,
-          order: [['studyHours', 'DESC']]
-        }),
-        Category.findAll({
-          attributes: ['id', 'name'],
-          order: [['id', 'ASC']]
+          group: ['course.teacher_id']
         })
-      ])
-      const whereCondition = { teacherId: { [Op.in]: teachers.rows.map(i => i.dataValues.id) } }
 
-      const ratingAverage = await Registration.findAll({
-        attributes: [
-          [sequelize.fn('AVG', sequelize.col('rating')), 'ratingAverage']
-        ],
-        include: [
-          { model: Course, attributes: [], where: whereCondition }
-        ],
-        group: ['course.teacher_id']
-      })
+        const teachersWithAverageRating = teachers.rows
+          .map((teacher, i) => ({
+            ...teacher.dataValues,
+            ratingAverage: ratingAverage[i]?.dataValues.ratingAverage
+          }))
 
-      const teachersWithAverageRating = teachers.rows
-        .map((teacher, i) => ({
-          ...teacher.dataValues,
-          ratingAverage: ratingAverage[i]?.dataValues.ratingAverage
-        }))
+        const studentsWithStudyHours = students
+          .map(student => ({
+            ...student.dataValues,
+            studyHours: (student.dataValues.studyHours != null) ? +student.dataValues.studyHours / 60 : null
+          }))
 
-      const studentsWithStudyHours = students
-        .map(student => ({
-          ...student.dataValues,
-          studyHours: (student.dataValues.studyHours != null) ? +student.dataValues.studyHours / 60 : null
-        }))
+        const data = {
+          ...getPagination(limit, page as number, teachers.count.length),
+          categories,
+          teachers: teachersWithAverageRating,
+          students: studentsWithStudyHours
+        }
 
-      const data = {
-        ...getPagination(limit, page as number, teachers.count.length),
-        categories,
-        teachers: teachersWithAverageRating,
-        students: studentsWithStudyHours
+        res.json({ data })
+      } catch (err) {
+        next(err)
       }
-
-      res.json({ data })
     })()
   }
 
