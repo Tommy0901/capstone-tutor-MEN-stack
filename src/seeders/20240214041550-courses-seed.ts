@@ -2,12 +2,12 @@ import { type QueryInterface } from 'sequelize'
 
 import { faker } from '@faker-js/faker'
 import { User, TeachingCategory, Category } from '../models'
-import { upcomingCourseDates, pastCourseDates, deDuplicateCourseDates } from '../helpers/time-helper'
-import { getRandomIndexes } from '../helpers/random-indexes-helper'
+import { upcomingCourseDates, pastCourseDates } from '../helpers/time-helper'
+import { getRandomArraryElements } from '../helpers/random-items-helper'
 
 export default {
   up: async (queryInterface: QueryInterface) => {
-    const userDatas = await User.findAll({
+    const teachers = (await User.findAll({
       attributes: ['id', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
       include: {
         model: TeachingCategory,
@@ -18,57 +18,48 @@ export default {
         }]
       },
       where: { isTeacher: true }
-    })
-    const teachers = userDatas.map(user => {
-      const teachers = user.toJSON()
-      teachers.teachingCategories = teachers.teachingCategories.map((obj: { category: { name: any } }) => obj.category.name)
-      return teachers
-    })
+    })).map(teacher => ({
+      ...teacher.toJSON(),
+      teachingCategories: teacher.teachingCategories.map((i) => i.category.name)
+    }))
+
+    const randomIndex = (Array: string[]): number => Math.floor(Math.random() * Array.length)
     const courses = []
-    const historicalCourseDates: any[] = []
-    const futureCourseDates: any[] = []
 
-    for (let i = 0; i < 2; i++) {
-      courses.push(...Array.from({ length: teachers.length }, (_, i) => {
-        const { id: teacherId, teachingCategories, ...whichDay } = teachers[i]
-        const randomIndexes = getRandomIndexes(
-          teachingCategories.length,
-          Math.ceil(Math.random() * teachingCategories.length)
-        )
-        const category = JSON.stringify(randomIndexes.map(i => teachingCategories[i]))
-        return {
-          teacher_id: teacherId,
-          category,
-          name: faker.lorem.word(),
-          intro: faker.lorem.paragraph(),
-          link: faker.internet.url(),
-          duration: (Math.floor(Math.random() * 2) !== 0) ? 30 : 60,
-          image: 'https://fakeimg.pl/300/?text=course%20img',
-          start_at: deDuplicateCourseDates(historicalCourseDates, pastCourseDates(whichDay), teachers.length, i)
-        }
-      }))
-    }
+    courses.push(...teachers.flatMap((teacher, i) => {
+      const { id, teachingCategories, ...freeDays } = teacher
+      const historicalCourseDates = pastCourseDates(freeDays)
+      const futureCourseDates = upcomingCourseDates(freeDays)
 
-    for (let i = 0; i < 2; i++) {
-      courses.push(...Array.from({ length: teachers.length }, (_, i) => {
-        const { id: teacherId, teachingCategories, ...whichDay } = teachers[i]
-        const randomIndexes = getRandomIndexes(
-          teachingCategories.length,
-          Math.ceil(Math.random() * teachingCategories.length)
-        )
-        const category = JSON.stringify(randomIndexes.map(i => teachingCategories[i]))
-        return {
-          teacher_id: teacherId,
-          category,
-          name: faker.lorem.word(),
-          intro: faker.lorem.paragraph(),
-          link: faker.internet.url(),
-          duration: (Math.floor(Math.random() * 2) !== 0) ? 30 : 60,
-          image: 'https://fakeimg.pl/300/?text=course%20img',
-          start_at: deDuplicateCourseDates(futureCourseDates, upcomingCourseDates(whichDay), teachers.length, i)
-        }
+      const courseDates = []
+
+      const firstCouseDate = historicalCourseDates[randomIndex(historicalCourseDates)]
+      let secondCoursDate = historicalCourseDates[randomIndex(historicalCourseDates)]
+
+      do {
+        secondCoursDate = historicalCourseDates[randomIndex(historicalCourseDates)]
+      } while (secondCoursDate === firstCouseDate)
+
+      const thirdCouseDate = futureCourseDates[randomIndex(futureCourseDates)]
+      let fourthCoursDate = futureCourseDates[randomIndex(futureCourseDates)]
+
+      do {
+        fourthCoursDate = futureCourseDates[randomIndex(futureCourseDates)]
+      } while (fourthCoursDate === thirdCouseDate)
+
+      courseDates.push(firstCouseDate, secondCoursDate, thirdCouseDate, fourthCoursDate)
+
+      return courseDates.map(courseDate => ({
+        teacher_id: id,
+        category: JSON.stringify(getRandomArraryElements(teachingCategories)),
+        name: faker.lorem.word(),
+        intro: faker.lorem.paragraph(),
+        link: faker.internet.url(),
+        duration: (Math.floor(Math.random() * 2) !== 0) ? 30 : 60,
+        image: 'https://fakeimg.pl/300/?text=course%20img',
+        start_at: courseDate
       }))
-    }
+    }))
 
     await queryInterface.bulkInsert('courses', courses)
   },

@@ -10,28 +10,30 @@ export default {
       sequelize.query(
         'SELECT id FROM users WHERE is_teacher = 0;',
         { type: QueryTypes.SELECT }
-      ),
+      ) as unknown as Array<{ id: string }>,
       sequelize.query(
         'SELECT id FROM courses WHERE start_at < :todayDate;',
         { type: QueryTypes.SELECT, replacements: { todayDate: currentTaipeiTime(new Date()) } }
-      ),
+      ) as unknown as Array<{ id: string }>,
       sequelize.query(
         'SELECT id FROM courses WHERE start_at >= :todayDate;',
         { type: QueryTypes.SELECT, replacements: { todayDate: currentTaipeiTime(new Date()) } }
-      )
+      ) as unknown as Array<{ id: string }>
     ])
+    const averageIndex = (i: number): number => Math.ceil((i + 1) * students.length / expiredCourses.length) - 1
+    const randomIndex = (i?: number): number => Math.floor(Math.random() * students.length)
     const registrations = []
 
-    registrations.push(...Array.from({ length: expiredCourses.length }, (_, i) => ({
-      student_id: (students[Math.ceil((i + 1) * students.length / expiredCourses.length) - 1] as { id: string }).id,
-      course_id: (expiredCourses[i] as { id: string }).id,
+    registrations.push(...expiredCourses.map((_, i) => ({
+      student_id: (students[averageIndex(i)]).id,
+      course_id: (expiredCourses[i]).id,
       rating: Math.ceil(Math.random() * 5),
       comment: faker.lorem.paragraph()
     })))
 
-    registrations.push(...Array.from({ length: upcomingCourses.length }, (_, i) => ({
-      student_id: (students[Math.floor(Math.random() * students.length)] as { id: string }).id,
-      course_id: (upcomingCourses[i] as { id: string }).id
+    registrations.push(...upcomingCourses.map((_, i) => ({
+      student_id: (students[randomIndex()]).id,
+      course_id: (upcomingCourses[i]).id
     })))
 
     await queryInterface.bulkInsert('registrations', registrations)

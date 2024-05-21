@@ -2,36 +2,47 @@ import { type QueryInterface } from 'sequelize'
 
 import { User, Category } from '../models'
 
+function shuffleArray (array: Array<{ id: number }>): Array<{ id: number }> {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]]
+  }
+  return array
+}
+
+function getRandomCategoryIds (array: Array<{ id: number }>): number[] {
+  const shuffledArray = shuffleArray([...array]) // 創建數組副本並打亂
+  const count = Math.floor(Math.random() * array.length) + 1 // 隨機決定要取出的元素個數
+
+  return shuffledArray
+    .slice(0, count)
+    .sort((a, b) => a.id - b.id)
+    .map(i => i.id)
+}
+
 export default {
   up: async (queryInterface: QueryInterface) => {
-    const teachingCategories = []
-    const teachers = await User.findAll({
-      attributes: ['id'],
-      where: { isTeacher: 1 }
+    const [teachers, categories] = await Promise.all([
+      User.findAll({
+        attributes: ['id'],
+        where: { isTeacher: 1 },
+        raw: true
+      }),
+      Category.findAll({
+        attributes: ['id'],
+        order: [['id', 'ASC']],
+        raw: true
+      })
+    ])
+
+    const teachingCategories = teachers.flatMap((_, i) => {
+      const categoryIds = getRandomCategoryIds(categories as Array<{ id: number }>)
+
+      return categoryIds.map((_, j) => ({
+        teacher_id: teachers[i].id,
+        category_id: categoryIds[j]
+      }))
     })
-    const categories = (await (Category.findAll({
-      attributes: ['id'],
-      raw: true,
-      order: [['id', 'ASC']]
-    }))).map(i => i.id)
-
-    teachingCategories.push(...Array.from({ length: teachers.length }, (_, i) => ({
-      teacher_id: teachers[i].id,
-      category_id: categories[Math.floor(Math.random() * categories.length)]
-    })))
-
-    const deDuplicateCategories = teachingCategories.map(item => item.category_id)
-
-    teachingCategories.push(...Array.from({ length: teachers.length }, (_, i) => {
-      const randomNumber = Math.floor(Math.random() * teachers.length)
-      let categoryId = categories[Math.floor(Math.random() * categories.length)]
-      do { categoryId = categories[Math.floor(Math.random() * categories.length)] }
-      while (categoryId === deDuplicateCategories[randomNumber]) // 避免 seed 幫同一位老師建立重覆的 categoyId
-      return {
-        teacher_id: teachers[randomNumber].id,
-        category_id: categoryId
-      }
-    }))
 
     await queryInterface.bulkInsert('teaching_categories', teachingCategories)
   },
