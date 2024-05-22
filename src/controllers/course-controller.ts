@@ -252,13 +252,13 @@ class CourseController {
 
     void (async () => {
       try {
-        const course = await Course.findByPk(courseId)
+        const course = await Course.findByPk(courseId, { raw: true })
 
         if (course == null) return errorMsg(res, 404, "Course didn't exist!")
 
         if (id !== course.teacherId) return errorMsg(res, 403, 'Insufficient permissions.')
 
-        const { createdAt, updatedAt, ...data } = course.dataValues as FormattedCourse
+        const { createdAt, updatedAt, ...data } = course as FormattedCourse
 
         data.startAt = formatCourseStartAt(data.startAt)
 
