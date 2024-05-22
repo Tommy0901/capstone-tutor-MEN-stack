@@ -23,8 +23,16 @@ interface RequestBody {
   confirmedPassword: string
 }
 
-interface UserData extends User {
+interface UserData extends Omit<User, 'createdAt' | 'updatedAt'> {
+  createdAt: string | Date
+  updatedAt: string | Date
   category: number[] // Add the category property
+}
+
+interface CourseData extends Omit<Course, 'startAt' | 'createdAt' | 'updatedAt'> {
+  startAt: string | Date
+  createdAt: string | Date
+  updatedAt: string | Date
 }
 
 if (process.env.NODE_ENV !== 'production') dotenv.config()
@@ -58,7 +66,7 @@ class UserController {
             },
             group: ['id'],
             limit,
-            offset: getOffset(limit, page as number)
+            offset: getOffset(limit, Number(page))
           }),
           Registration.findAll({
             attributes: [
@@ -99,17 +107,17 @@ class UserController {
         const studentsWithStudyHours = students
           .map(student => ({
             ...student.dataValues,
-            studyHours: (student.dataValues.studyHours != null) ? +student.dataValues.studyHours / 60 : null
+            studyHours: (student.dataValues.studyHours ?? 0) / 60
           }))
 
         const data = {
-          ...getPagination(limit, page as number, teachers.count.length),
+          ...getPagination(limit, Number(page), teachers.count.length),
           categories,
           teachers: teachersWithAverageRating,
           students: studentsWithStudyHours
         }
 
-        res.json({ data })
+        res.json({ status: 'success', data })
       } catch (err) {
         next(err)
       }
@@ -150,12 +158,13 @@ class UserController {
         }
 
         const user = await User.create(newUser as User)
-        const { password: removedPassword, ...data } = user.toJSON()
 
-        data.updatedAt = currentTaipeiTime(data.updatedAt as string)
-        data.createdAt = currentTaipeiTime(data.createdAt as string)
+        const { password: removedPassword, ...data } = user.toJSON() as UserData
 
-        res.json({ data })
+        data.createdAt = currentTaipeiTime(data.createdAt)
+        data.updatedAt = currentTaipeiTime(data.updatedAt)
+
+        res.json({ status: 'success', data })
       } catch (err) {
         next(err)
       }
@@ -172,7 +181,7 @@ class UserController {
     void (async () => {
       try {
         const findOptions = { where: { email }, raw: true }
-        const user = await User.findOne(findOptions) ?? await Admin.findOne(findOptions)
+        const user = await User.findOne(findOptions) ?? await Admin.findOne(findOptions) as UserData
 
         if (user == null) {
           return errorMsg(res, 401, 'Incorrect email or password!')
@@ -181,20 +190,24 @@ class UserController {
         await bcrypt.compare(password, user.password)
           ? (process.env.JWT_SECRET != null)
               ? res.json({
-                id: user.id,
-                isTeacher: (user as unknown as { isTeacher: string }).isTeacher,
-                email: user.email,
-                token: jwt.sign(
-                  {
-                    id: user.id,
-                    isTeacher: (user as unknown as { isTeacher: string }).isTeacher,
-                    email: user.email
-                  },
-                  process.env.JWT_SECRET,
-                  {
-                    expiresIn: '30d'
-                  }
-                )
+                status: 'success',
+                data: {
+                  id: user.id,
+                  isTeacher: user.isTeacher,
+                  name: user.name,
+                  email: user.email,
+                  token: jwt.sign(
+                    {
+                      id: user.id,
+                      isTeacher: user.isTeacher,
+                      email: user.email
+                    },
+                    process.env.JWT_SECRET,
+                    {
+                      expiresIn: '30d'
+                    }
+                  )
+                }
               })
               : errorMsg(res, 500, 'JWT token encountered a generation error.')
           : errorMsg(res, 401, 'Incorrect username or password!')
@@ -209,7 +222,7 @@ class UserController {
 
     void (async () => {
       try {
-        const [user, rank] = await Promise.all([
+        const [user, ranks] = await Promise.all([
           User.findByPk(id, {
             attributes: ['id', 'name', 'email', 'nickname', 'avatar', 'selfIntro'],
             include: {
@@ -234,16 +247,20 @@ class UserController {
 
         if (user == null) return errorMsg(res, 404, "Student didn't exist!")
 
-        user.dataValues.registrations = user.dataValues.registrations
-          .map(item => {
-            (item.dataValues.course.dataValues.startAt as unknown as string) = currentTaipeiTime(item.dataValues.course.dataValues.startAt)
-            return item
-          })
-        user.dataValues.studyRank = rank.findIndex(i => i.dataValues.studentId === +id) + 1
-        const studyHours = rank[user.dataValues.studyRank - 1]?.dataValues.studyHours
-        user.dataValues.studyHours = studyHours != null ? studyHours / 60 : 0
+        const studyRank = ranks.findIndex(i => i.dataValues.studentId === id) + 1
+        const studyHours = (ranks[studyRank - 1]?.dataValues.studyHours ?? 0) / 60
 
-        res.json({ status: 'success', data: user })
+        const data = {
+          ...user.toJSON(),
+          studyRank,
+          studyHours
+        }
+
+        data.registrations.forEach(i => {
+          (i.course as CourseData).startAt = currentTaipeiTime(i.course.startAt)
+        })
+
+        res.json({ status: 'success', data })
       } catch (err) {
         next(err)
       }
@@ -261,12 +278,12 @@ class UserController {
           .findByPk((id), {
             attributes: ['id', 'name', 'email', 'nickname', 'avatar', 'selfIntro', 'createdAt', 'updatedAt'],
             raw: true
-          })
+          }) as UserData
 
         if (user == null) return errorMsg(res, 404, "Student didn't exist!")
 
-        user.createdAt = currentTaipeiTime(user.createdAt as string)
-        user.updatedAt = currentTaipeiTime(user.updatedAt as string)
+        user.createdAt = currentTaipeiTime(user.createdAt)
+        user.updatedAt = currentTaipeiTime(user.updatedAt)
 
         res.json({ status: 'success', data: user })
       } catch (err) {
@@ -284,8 +301,11 @@ class UserController {
 
         if (name == null) return errorMsg(res, 401, 'Please enter name.')
 
-        const [filePath, user] = await Promise.all([uploadSingleImageToS3(file as MulterFile, userId),
-          User.findByPk(id, { attributes: ['id', 'name', 'email', 'nickname', 'avatar', 'selfIntro', 'createdAt', 'updatedAt'] })
+        const [user, filePath] = await Promise.all([
+          User.findByPk(id, {
+            attributes: ['id', 'name', 'email', 'nickname', 'avatar', 'selfIntro', 'createdAt', 'updatedAt']
+          }),
+          uploadSingleImageToS3(file as MulterFile, userId)
         ])
 
         if (user == null) return errorMsg(res, 404, "Student didn't exist!")
@@ -315,14 +335,13 @@ class UserController {
 
         const user = await User
           .findByPk(id, {
-            attributes: ['id', 'name', 'email', 'isTeacher', 'createdAt', 'updatedAt'],
+            attributes: ['id', 'isTeacher', 'name', 'email', 'updatedAt'],
             raw: true
-          })
+          }) as UserData
 
         if (user == null) return errorMsg(res, 404, "Teacher didn't exist!")
 
-        user.createdAt = currentTaipeiTime(user.createdAt as string)
-        user.updatedAt = currentTaipeiTime(user.updatedAt as string)
+        user.updatedAt = currentTaipeiTime(user.updatedAt)
 
         res.json({ status: 'success', data: user })
       } catch (err) {
@@ -397,10 +416,10 @@ class UserController {
 
         if (user == null) return errorMsg(res, 404, "Teacher didn't exist!")
 
-        const { password, isTeacher, ...data } = user.toJSON()
+        const { password, isTeacher, ...data } = user.toJSON() as UserData
 
-        data.createdAt = currentTaipeiTime(data.createdAt as string)
-        data.updatedAt = currentTaipeiTime(data.updatedAt as string)
+        data.createdAt = currentTaipeiTime(data.createdAt)
+        data.updatedAt = currentTaipeiTime(data.updatedAt)
 
         res.json({ status: 'success', data })
       } catch (err) {
@@ -450,11 +469,11 @@ class UserController {
 
         await user.update({ avatar: filePath ?? user.avatar, ...updateFields })
 
-        const { password, isTeacher, ...data } = user.toJSON() as unknown as UserData
+        const { password, isTeacher, ...data } = user.toJSON() as UserData
 
         data.category = teachingCategory.map(i => i.dataValues.categoryId)
-        data.createdAt = currentTaipeiTime(data.createdAt as string)
-        data.updatedAt = currentTaipeiTime(data.updatedAt as string)
+        data.createdAt = currentTaipeiTime(data.createdAt)
+        data.updatedAt = currentTaipeiTime(data.updatedAt)
 
         res.json({ status: 'success', data })
       } catch (err) {
