@@ -109,13 +109,13 @@ export function confirmAvailability (availableDaysCount: AvailableDaysCount): bo
   return availableDaysSet.has(1)
 }
 
-export function confirmAvailabilityConflicts (availableDaysCount: AvailableDaysCount, startAt: 'YYYY-MM-DD HH:mm'): boolean {
+export function confirmAvailabilityConflicts (availableDaysCount: AvailableDaysCount, startAt: 'YYYY-MM-DD HH:mm:ss'): boolean {
   const whichDay = dayjs(startAt).day()
   const availableDaysArr = Object.values(availableDaysCount).map(day => day === 1)
   return availableDaysArr[whichDay]
 }
 
-export function confirmScheduledHoursConflicts (scheduledHours: FormattedCourse[], startAt: 'YYYY-MM-DD HH:mm', duration: number): boolean {
+export function confirmScheduledHoursConflicts (scheduledHours: FormattedCourse[], startAt: 'YYYY-MM-DD HH:mm:ss', duration: number): boolean {
   const endAt = dayjs(startAt).add(duration, 'minute').format('YYYY-MM-DD HH:mm:ss')
   const timeSlots = scheduledHours.map(i => ({
     startAt: dayjs(i.startAt).format('YYYY-MM-DD HH:mm:ss'),

@@ -20,9 +20,13 @@ const availableDays = [
 export default {
   up: async (queryInterface: QueryInterface) => {
     const [avatars, count] = await Promise.all([getUserPhotos(), User.count()])
-    await Promise.all(Array.from({ length: 34 }, async (_, i) => {
-      await uploadImageToS3(avatars[i] as string, i + 1 + count)
-    }))
+
+    if (avatars != null) {
+      await Promise.all(Array.from({ length: 34 }, async (_, i) => {
+        await uploadImageToS3((avatars as string[])[i], i + 1 + count)
+      }))
+    }
+
     const hash = await bcrypt.hash('12345678', 10)
     const data = Array.from({ length: 34 }, (_, i) => {
       if (i < 10) {

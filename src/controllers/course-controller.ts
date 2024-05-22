@@ -5,7 +5,7 @@ import { User, Category, Course, Registration } from '../models'
 
 import { type AuthenticatedRequest } from '../middlewares/auth-handler'
 
-import { errorMsg } from '../helpers/message-helper'
+import { type ErrorResponse, errorMsg } from '../helpers/message-helper'
 import { type MulterFile, uploadSingleImageToS3 } from '../helpers/image-helper'
 import { allNotNullOrEmpty, sanitizeFileName } from '../helpers/validation-helper'
 import {
@@ -43,7 +43,7 @@ class CourseController {
     })()
   }
 
-  postCourse (req: Request, res: Response, next: NextFunction): Record<string, any> | undefined {
+  postCourse (req: Request, res: Response, next: NextFunction): Response<ErrorResponse> | undefined {
     const { user: { id, isTeacher } } = req as AuthenticatedRequest
     const { body: { category, name, intro, link, duration, startAt }, file } = req
 
@@ -81,11 +81,11 @@ class CourseController {
 
         if (!confirmAvailability(availableDaysCount)) return errorMsg(res, 400, 'Please select available days first.')
 
-        if (!confirmAvailabilityConflicts(availableDaysCount, startAt as 'YYYY-MM-DD HH:mm')) {
+        if (!confirmAvailabilityConflicts(availableDaysCount, startAt as 'YYYY-MM-DD HH:mm:ss')) {
           return errorMsg(res, 400, "Class schedule conflicts with teacher's availability.")
         }
 
-        if (confirmScheduledHoursConflicts(scheduledHours, startAt as 'YYYY-MM-DD HH:mm', duration as number)) {
+        if (confirmScheduledHoursConflicts(scheduledHours, startAt as 'YYYY-MM-DD HH:mm:ss', duration as number)) {
           return errorMsg(res, 400, "The course opening time conflicts with the teacher's class schedule.")
         }
 
@@ -160,7 +160,7 @@ class CourseController {
     })()
   }
 
-  putCourse (req: Request, res: Response, next: NextFunction): Record<string, any> | undefined {
+  putCourse (req: Request, res: Response, next: NextFunction): Response<ErrorResponse> | undefined {
     const { params: { courseId }, user: { id } } = req as AuthenticatedRequest
     const { body: { category, name, intro, link, duration, startAt }, file } = req
 
@@ -202,11 +202,11 @@ class CourseController {
 
         if (!confirmAvailability(availableDaysCount)) return errorMsg(res, 400, 'Please select available days first.')
 
-        if (!confirmAvailabilityConflicts(availableDaysCount, startAt as 'YYYY-MM-DD HH:mm')) {
+        if (!confirmAvailabilityConflicts(availableDaysCount, startAt as 'YYYY-MM-DD HH:mm:ss')) {
           return errorMsg(res, 400, "Class schedule conflicts with teacher's availability.")
         }
 
-        if (confirmScheduledHoursConflicts(scheduledHours, startAt as 'YYYY-MM-DD HH:mm', duration as number)) {
+        if (confirmScheduledHoursConflicts(scheduledHours, startAt as 'YYYY-MM-DD HH:mm:ss', duration as number)) {
           return errorMsg(res, 400, "The course opening time conflicts with the teacher's class schedule.")
         }
 

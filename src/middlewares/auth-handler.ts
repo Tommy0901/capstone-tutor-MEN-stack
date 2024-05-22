@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 
 import { User } from '../models'
 
-import { errorMsg } from '../helpers/message-helper'
+import { type ErrorResponse, errorMsg } from '../helpers/message-helper'
 
 export interface AuthenticatedRequest extends Request {
   user: {
@@ -15,7 +15,7 @@ export interface AuthenticatedRequest extends Request {
   }
 }
 
-export function authenticated (req: Request, res: Response, next: NextFunction): Record<string, any> | undefined {
+export function authenticated (req: Request, res: Response, next: NextFunction): Response<ErrorResponse> | undefined {
   const token = req.headers.authorization?.split(' ')[1]
 
   if (token == null) return errorMsg(res, 401, 'Unauthorized')

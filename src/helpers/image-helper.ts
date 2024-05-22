@@ -115,13 +115,13 @@ export async function deleteFileInS3 (fileNumber: number): Promise<void> {
     await deleteFileFromS3(fileNumber)
 
     console.log('File deleted in S3')
-  } catch (err: any) {
+  } catch (err) {
     console.error('Error deleting file in S3:', err)
     throw err
   }
 }
 
-export async function getUserPhotos (): Promise<any> {
+export async function getUserPhotos (): Promise<Array<string | undefined> | undefined> {
   // 串接 unsplash 的圖片
   try {
     const photos = await Promise.all([
@@ -137,7 +137,7 @@ export async function getUserPhotos (): Promise<any> {
       })
     ])
 
-    const userImages = photos.flatMap((photo: any) => photo.response.results.map((result: any) => result.urls.small))
+    const userImages = photos.flatMap(photo => photo.response?.results.map(result => result.urls.small))
     return userImages
   } catch (err) {
     console.error(err)

@@ -10,7 +10,7 @@ import countries from '../config/conuntries'
 
 import { type AuthenticatedRequest } from '../middlewares/auth-handler'
 
-import { errorMsg } from '../helpers/message-helper'
+import { type ErrorResponse, errorMsg } from '../helpers/message-helper'
 import { getOffset, getPagination } from '../helpers/pagination-helper'
 import { currentTaipeiTime } from '../helpers/time-helper'
 import { allNotNullOrEmpty, booleanObjects } from '../helpers/validation-helper'
@@ -124,7 +124,7 @@ class UserController {
     })()
   }
 
-  signUp (req: Request, res: Response, next: NextFunction): Record<string, string> | undefined {
+  signUp (req: Request, res: Response, next: NextFunction): Response<ErrorResponse> | undefined {
     const { name, email, password, confirmedPassword } = req.body as RequestBody
 
     if (allNotNullOrEmpty(name, email, password)) {
@@ -171,7 +171,7 @@ class UserController {
     })()
   }
 
-  signIn (req: Request, res: Response, next: NextFunction): Record<string, string> | undefined {
+  signIn (req: Request, res: Response, next: NextFunction): Response<ErrorResponse> | undefined {
     const { email, password } = req.body as RequestBody
 
     if (allNotNullOrEmpty(email, password)) {
