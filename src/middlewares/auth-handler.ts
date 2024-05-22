@@ -33,8 +33,16 @@ export function authenticated (req: Request, res: Response, next: NextFunction):
 
   void (async () => {
     try {
-      const userNotFound = await User.findByPk(id, { raw: true }) == null
-      if (userNotFound) return errorMsg(res, 401, 'Invalid jwt token')
+      const userNotFound = await User.findByPk(id, {
+        attributes: ['isTeacher'],
+        raw: true
+      }) as unknown as { isTeacher: number }
+
+      if (userNotFound == null) {
+        return errorMsg(res, 401, 'Invalid jwt token')
+      }
+
+      (req as AuthenticatedRequest).user.isTeacher = userNotFound.isTeacher
 
       next()
     } catch (err) {
