@@ -20,20 +20,20 @@ export default {
         { type: QueryTypes.SELECT, replacements: { todayDate: currentTaipeiTime(new Date()) } }
       ) as unknown as Array<{ id: string }>
     ])
-    const averageIndex = (i: number): number => Math.ceil((i + 1) * students.length / expiredCourses.length) - 1
-    const randomIndex = (i?: number): number => Math.floor(Math.random() * students.length)
+    const averageStudentsArrayIndex = (i: number): number => Math.ceil((i + 1) * students.length / expiredCourses.length) - 1
+    const randomStudentsArrayIndex = (i?: number): number => Math.floor(Math.random() * students.length)
     const registrations = []
 
     registrations.push(...expiredCourses.map((_, i) => ({
-      student_id: (students[averageIndex(i)]).id,
-      course_id: (expiredCourses[i]).id,
+      student_id: students[averageStudentsArrayIndex(i)].id,
+      course_id: expiredCourses[i].id,
       rating: Math.ceil(Math.random() * 5),
       comment: faker.lorem.paragraph()
     })))
 
     registrations.push(...upcomingCourses.map((_, i) => ({
-      student_id: (students[randomIndex()]).id,
-      course_id: (upcomingCourses[i]).id
+      student_id: students[randomStudentsArrayIndex()].id,
+      course_id: upcomingCourses[i].id
     })))
 
     await queryInterface.bulkInsert('registrations', registrations)

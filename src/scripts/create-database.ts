@@ -1,5 +1,5 @@
 import mysql from 'mysql2'
-import config from './config/config.json'
+import config from '../config/config.json'
 
 const env = process.env.NODE_ENV ?? 'development'
 const { host, username: user, password, database } = (config as any)[env]

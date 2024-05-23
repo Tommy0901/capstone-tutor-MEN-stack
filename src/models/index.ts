@@ -15,3 +15,5 @@ const sequelize = new Sequelize(sequelizeOptions)
 sequelize.addModels([User, Admin, Course, Category, Registration, TeachingCategory])
 
 export { User, Admin, Course, Category, Registration, TeachingCategory }
+
+export default sequelize

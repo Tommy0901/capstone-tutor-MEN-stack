@@ -1,12 +1,12 @@
-import { type QueryInterface } from 'sequelize'
+import sequelize, { User, Category, TeachingCategory, Course } from '../models'
 
 import { faker } from '@faker-js/faker'
-import { User, TeachingCategory, Category } from '../models'
-import { upcomingCourseDates, pastCourseDates } from '../helpers/time-helper'
-import { getRandomArraryElements } from '../helpers/random-items-helper'
 
-export default {
-  up: async (queryInterface: QueryInterface) => {
+import { getRandomArraryElements } from '../helpers/random-items-helper'
+import { upcomingCourseDates } from '../helpers/time-helper'
+
+void (async () => {
+  try {
     const teachers = (await User.findAll({
       attributes: ['id', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
       include: {
@@ -28,43 +28,35 @@ export default {
 
     courses.push(...teachers.flatMap(teacher => {
       const { id, teachingCategories, ...freeDays } = teacher
-      const historicalCourseDates = pastCourseDates(freeDays)
       const futureCourseDates = upcomingCourseDates(freeDays)
 
       const courseDates = []
 
-      const firstCouseDate = historicalCourseDates[randomIndex(historicalCourseDates)]
-      let secondCoursDate = historicalCourseDates[randomIndex(historicalCourseDates)]
+      const firstCouseDate = futureCourseDates[randomIndex(futureCourseDates)]
+      let secondCoursDate = futureCourseDates[randomIndex(futureCourseDates)]
 
       do {
-        secondCoursDate = historicalCourseDates[randomIndex(historicalCourseDates)]
+        secondCoursDate = futureCourseDates[randomIndex(futureCourseDates)]
       } while (secondCoursDate === firstCouseDate)
 
-      const thirdCouseDate = futureCourseDates[randomIndex(futureCourseDates)]
-      let fourthCoursDate = futureCourseDates[randomIndex(futureCourseDates)]
-
-      do {
-        fourthCoursDate = futureCourseDates[randomIndex(futureCourseDates)]
-      } while (fourthCoursDate === thirdCouseDate)
-
-      courseDates.push(firstCouseDate, secondCoursDate, thirdCouseDate, fourthCoursDate)
+      courseDates.push(firstCouseDate, secondCoursDate)
 
       return courseDates.map(courseDate => ({
-        teacher_id: id,
-        category: JSON.stringify(getRandomArraryElements(teachingCategories)),
+        teacherId: id,
+        category: getRandomArraryElements(teachingCategories),
         name: faker.lorem.word(),
         intro: faker.lorem.paragraph(),
         link: faker.internet.url(),
         duration: (Math.floor(Math.random() * 2) !== 0) ? 30 : 60,
         image: 'https://fakeimg.pl/300/?text=course%20img',
-        start_at: courseDate
+        startAt: courseDate
       }))
     }))
 
-    await queryInterface.bulkInsert('courses', courses)
-  },
-
-  down: async (queryInterface: QueryInterface) => {
-    await queryInterface.bulkDelete('courses', {})
+    await Course.bulkCreate(courses as unknown as Course[])
+  } catch (err) {
+    console.log(err)
+  } finally {
+    await sequelize.close()
   }
-}
+})()

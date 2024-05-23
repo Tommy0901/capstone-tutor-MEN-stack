@@ -94,7 +94,7 @@ export async function uploadSingleImageToS3 (file: MulterFile, imageName: string
   return `https://capstone-tutor.s3.ap-northeast-1.amazonaws.com/${imageName}.jpg`
 }
 
-export async function uploadImageToS3 (API_URL: string, fileNumber: number): Promise<void> {
+export async function uploadImagesToS3 (API_URL: string, fileNumber: number): Promise<void> {
   try {
     // Download image
     const response = await axios.get<ArrayBuffer>(API_URL, { responseType: 'arraybuffer' })

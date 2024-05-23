@@ -1,12 +1,13 @@
 import { type QueryInterface } from 'sequelize'
+import { faker } from '@faker-js/faker'
 
 import bcrypt from 'bcryptjs'
+
 import { User } from '../models'
-import { faker } from '@faker-js/faker'
-import { uploadImageToS3, deleteFileInS3, getUserPhotos } from '../helpers/image-helper'
-import onePieceCharacters from '../config/one-piece'
 
 import countries from '../config/conuntries'
+import onePieceCharacters from '../config/one-piece'
+
 const countryCodes = Object.keys(countries)
 
 const availableDays = [
@@ -19,15 +20,8 @@ const availableDays = [
 
 export default {
   up: async (queryInterface: QueryInterface) => {
-    const [avatars, count] = await Promise.all([getUserPhotos(), User.count()])
+    const [count, hash] = await Promise.all([User.count(), bcrypt.hash('12345678', 10)])
 
-    if (avatars != null) {
-      await Promise.all(Array.from({ length: 34 }, async (_, i) => {
-        await uploadImageToS3((avatars as string[])[i], i + 1 + count)
-      }))
-    }
-
-    const hash = await bcrypt.hash('12345678', 10)
     const data = Array.from({ length: 34 }, (_, i) => {
       if (i < 10) {
         // Insert regular users
@@ -65,8 +59,6 @@ export default {
   },
 
   down: async (queryInterface: QueryInterface) => {
-    const count = await User.count()
-    await Promise.all(Array.from({ length: 34 }).map(async (_, i) => { await deleteFileInS3(count - i) }))
     await queryInterface.bulkDelete('users', {})
   }
 }

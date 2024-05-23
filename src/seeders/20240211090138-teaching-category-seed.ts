@@ -25,7 +25,7 @@ export default {
     const [teachers, categories] = await Promise.all([
       User.findAll({
         attributes: ['id'],
-        where: { isTeacher: 1 },
+        where: { isTeacher: true },
         raw: true
       }),
       Category.findAll({
