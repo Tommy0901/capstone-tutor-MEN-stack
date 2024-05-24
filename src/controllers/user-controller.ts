@@ -83,7 +83,8 @@ class UserController {
           }),
           Category.findAll({
             attributes: ['id', 'name'],
-            order: [['id', 'ASC']]
+            order: [['id', 'ASC']],
+            raw: true
           })
         ])
         const whereCondition = { teacherId: { [Op.in]: teachers.rows.map(i => i.dataValues.id) } }
@@ -145,7 +146,7 @@ class UserController {
 
     void (async () => {
       try {
-        const registeredEmail = await User.findOne({ where: { email } })
+        const registeredEmail = await User.findOne({ where: { email }, raw: true })
 
         if (registeredEmail != null) {
           return errorMsg(res, 409, 'Email has already been registered.')
@@ -181,11 +182,13 @@ class UserController {
     void (async () => {
       try {
         const findOptions = { where: { email }, raw: true }
-        const user = await User.findOne(findOptions) ?? await Admin.findOne(findOptions) as UserData
+        const user = await User.findOne(findOptions) ?? await Admin.findOne(findOptions)
 
         if (user == null) {
           return errorMsg(res, 401, 'Incorrect email or password!')
         }
+
+        const { isTeacher } = user as User
 
         await bcrypt.compare(password, user.password)
           ? (process.env.JWT_SECRET != null)
@@ -193,13 +196,13 @@ class UserController {
                 status: 'success',
                 data: {
                   id: user.id,
-                  isTeacher: user.isTeacher,
+                  isTeacher,
                   name: user.name,
                   email: user.email,
                   token: jwt.sign(
                     {
                       id: user.id,
-                      isTeacher: user.isTeacher,
+                      isTeacher,
                       email: user.email
                     },
                     process.env.JWT_SECRET,
@@ -245,7 +248,7 @@ class UserController {
             order: [['studyHours', 'DESC']]
           })])
 
-        if (user == null) return errorMsg(res, 404, "Student didn't exist!")
+        if (user == null) return errorMsg(res, 500, 'User data missing') // 於 Auth-handler middleware 對使用者是否存在已做過確認，按理不應該出現找不到使用者的狀況
 
         const studyRank = ranks.findIndex(i => i.dataValues.studentId === id) + 1
         const studyHours = (ranks[studyRank - 1]?.dataValues.studyHours ?? 0) / 60
@@ -268,19 +271,17 @@ class UserController {
   }
 
   editStudent (req: Request, res: Response, next: NextFunction): void {
+    const { user: { id } } = req as AuthenticatedRequest
+
     void (async () => {
       try {
-        const { params: { id }, user: { id: userId } } = req as AuthenticatedRequest
-
-        if (+id !== userId) return errorMsg(res, 403, 'Permission denied!')
-
         const user = await User
-          .findByPk((id), {
+          .findByPk(id, {
             attributes: ['id', 'name', 'email', 'nickname', 'avatar', 'selfIntro', 'createdAt', 'updatedAt'],
             raw: true
-          }) as UserData
+          }) as UserData | null
 
-        if (user == null) return errorMsg(res, 404, "Student didn't exist!")
+        if (user == null) return errorMsg(res, 500, 'User data missing') // 於 Auth-handler middleware 對使用者是否存在已做過確認，按理不應該出現找不到使用者的狀況
 
         user.createdAt = currentTaipeiTime(user.createdAt)
         user.updatedAt = currentTaipeiTime(user.updatedAt)
@@ -292,58 +293,61 @@ class UserController {
     })()
   }
 
-  putStudent (req: Request, res: Response, next: NextFunction): void {
+  putStudent (req: Request, res: Response, next: NextFunction): Response<ErrorResponse> | undefined {
+    const { user: { id }, body: { name, nickname, selfIntro }, file } = req as AuthenticatedRequest
+
+    if (name == null || name === '') return errorMsg(res, 400, 'Please enter name.')
+
     void (async () => {
       try {
-        const { params: { id }, user: { id: userId }, body: { name, nickname, selfIntro }, file } = req as AuthenticatedRequest
-
-        if (+id !== userId) return errorMsg(res, 403, 'Insufficient permissions. Update failed!')
-
-        if (name == null) return errorMsg(res, 401, 'Please enter name.')
-
-        const [user, filePath] = await Promise.all([
+        const [filePath, user] = await Promise.all([
+          uploadSingleImageToS3(file as MulterFile, id),
           User.findByPk(id, {
             attributes: ['id', 'name', 'email', 'nickname', 'avatar', 'selfIntro', 'createdAt', 'updatedAt']
-          }),
-          uploadSingleImageToS3(file as MulterFile, userId)
+          })
         ])
 
-        if (user == null) return errorMsg(res, 404, "Student didn't exist!")
+        if (user == null) return errorMsg(res, 500, 'User data missing') // 於 Auth-handler middleware 對使用者是否存在已做過確認，按理不應該出現找不到使用者的狀況
 
-        await user.update({ name, nickname, avatar: filePath ?? user.avatar, selfIntro })
+        const fields = { name, nickname, avatar: filePath ?? user.avatar, selfIntro }
 
-        user.dataValues.createdAt = currentTaipeiTime(user.dataValues.createdAt as string)
-        user.dataValues.updatedAt = currentTaipeiTime(user.dataValues.updatedAt as string)
+        const data = (await user.update(fields)).toJSON() as UserData | undefined
 
-        res.json({ status: 'success', data: user })
+        if (data == null) return errorMsg(res, 500, 'DataBase Error. Update failed!')
+
+        data.createdAt = currentTaipeiTime(data.createdAt)
+        data.updatedAt = currentTaipeiTime(data.updatedAt)
+
+        res.json({ status: 'success', data })
       } catch (err) {
         next(err)
       }
     })()
   }
 
-  patchTeacher (req: Request, res: Response, next: NextFunction): void {
-    const { params: { id }, user: { id: userId, isTeacher } } = req as AuthenticatedRequest
+  patchTeacher (req: Request, res: Response, next: NextFunction): Response<ErrorResponse> | undefined {
+    const { user: { id, isTeacher } } = req as AuthenticatedRequest
+
+    if (isTeacher !== 0) return errorMsg(res, 403, 'Duplicate application for teacher. Update failed!')
 
     void (async () => {
       try {
-        if (isTeacher !== 0) return errorMsg(res, 403, 'Duplicate application for teacher. Update failed!')
+        const user = await User.findByPk(id, {
+          attributes: ['id', 'isTeacher', 'name', 'email', 'createdAt', 'updatedAt']
+        })
 
-        if (Number(id) !== userId) return errorMsg(res, 403, 'Insufficient permissions. Update failed!')
+        const fields = { isTeacher: true }
 
-        await User.update({ isTeacher: true }, { where: { id } })
+        if (user == null) return errorMsg(res, 500, 'User data missing') // 於 Auth-handler middleware 對使用者是否存在已做過確認，按理不應該出現找不到使用者的狀況
 
-        const user = await User
-          .findByPk(id, {
-            attributes: ['id', 'isTeacher', 'name', 'email', 'updatedAt'],
-            raw: true
-          }) as UserData
+        const data = (await user.update(fields)).toJSON() as UserData
 
-        if (user == null) return errorMsg(res, 404, "Teacher didn't exist!")
+        if (data == null) return errorMsg(res, 500, 'DataBase Error. Update failed!')
 
-        user.updatedAt = currentTaipeiTime(user.updatedAt)
+        data.createdAt = currentTaipeiTime(data.createdAt)
+        data.updatedAt = currentTaipeiTime(data.updatedAt)
 
-        res.json({ status: 'success', data: user })
+        res.json({ status: 'success', data })
       } catch (err) {
         next(err)
       }
@@ -380,13 +384,11 @@ class UserController {
 
         if (user == null) return errorMsg(res, 404, "Teacher didn't exist!")
 
-        user.dataValues.courses = user.dataValues.courses
-          .map(item => {
-            (item.dataValues.startAt as unknown as string) = currentTaipeiTime(item.dataValues.startAt)
-            return item
-          })
-
         const { password, isTeacher, createdAt, updatedAt, ...data } = user.toJSON()
+
+        data.courses.forEach(course => {
+          (course as CourseData).startAt = currentTaipeiTime(course.startAt)
+        })
         data.ratingAverage = registrations[0]?.toJSON().ratingAverage ?? undefined
 
         res.json({ status: 'success', data })
@@ -397,13 +399,14 @@ class UserController {
   }
 
   editTeacher (req: Request, res: Response, next: NextFunction): void {
-    const { params: { id }, user: { id: userId } } = req as AuthenticatedRequest
+    const { user: { id } } = req as AuthenticatedRequest
 
     void (async () => {
       try {
-        if (Number(id) !== userId) return errorMsg(res, 403, 'Permission denied!')
-
         const user = await User.findByPk(id, {
+          attributes: {
+            exclude: ['password', 'isTeacher']
+          },
           include: {
             model: TeachingCategory,
             attributes: ['categoryId'],
@@ -414,58 +417,58 @@ class UserController {
           }
         })
 
-        if (user == null) return errorMsg(res, 404, "Teacher didn't exist!")
+        if (user == null) return errorMsg(res, 500, 'User data missing') // 於 Auth-handler middleware 對使用者是否存在已做過確認，按理不應該出現找不到使用者的狀況
 
-        const { password, isTeacher, ...data } = user.toJSON() as UserData
+        user.dataValues.createdAt = currentTaipeiTime(user.dataValues.createdAt as Date)
+        user.dataValues.updatedAt = currentTaipeiTime(user.dataValues.updatedAt as Date)
 
-        data.createdAt = currentTaipeiTime(data.createdAt)
-        data.updatedAt = currentTaipeiTime(data.updatedAt)
-
-        res.json({ status: 'success', data })
+        res.json({ status: 'success', data: user })
       } catch (err) {
         next(err)
       }
     })()
   }
 
-  putTeacher (req: Request, res: Response, next: NextFunction): void {
-    const { params: { id }, user: { id: userId }, file } = req as AuthenticatedRequest
+  putTeacher (req: Request, res: Response, next: NextFunction): Response<ErrorResponse> | undefined {
+    const { user: { id }, file } = req as AuthenticatedRequest
     const { body: { name, nation, nickname, teachStyle, selfIntro, category } } = req
     const { body: { mon, tue, wed, thu, fri, sat, sun } } = req
     const availableDays: Record<string, boolean> = { mon, tue, wed, thu, fri, sat, sun }
 
+    if (name == null || name === '') return errorMsg(res, 400, 'Please enter name.')
+
+    if (!Array.isArray(category) || category?.length < 1) return errorMsg(res, 400, 'Please enter categoryId array.')
+
+    const hasDuplicates = category.filter((value, index, self) => self.indexOf(value) !== index).length > 0
+    if (hasDuplicates) return errorMsg(res, 400, 'CategoryId has duplicates.')
+
+    if (!booleanObjects(availableDays)) return errorMsg(res, 400, 'Please select available days first.')
+
+    if (!Object.keys(countries).includes(nation as string)) return errorMsg(res, 400, 'Input nation code was invalid.')
+
     void (async () => {
       try {
-        if (Number(id) !== userId) return errorMsg(res, 403, 'Insufficient permissions. Update failed!')
+        const categoryIdsSet = new Set((await Category.findAll({ raw: true })).map(i => i.id)) as Set<number>
 
-        if (name == null) return errorMsg(res, 400, 'Please enter name.')
-
-        if (!Array.isArray(category) || category?.length < 1) return errorMsg(res, 400, 'Please enter categoryId array.')
-
-        const hasDuplicates = category.filter((value, index, self) => self.indexOf(value) !== index).length > 0
-        if (hasDuplicates) return errorMsg(res, 400, 'CategoryId has duplicates.')
-
-        if (!booleanObjects(availableDays)) return errorMsg(res, 400, 'Please select available days first.')
-
-        if (!Object.keys(countries).includes(nation as string)) return errorMsg(res, 400, 'Input nation code was invalid.')
-
-        let categoryId = await Category.findAll({ raw: true })
-        categoryId = categoryId.map(i => String(i.id)) as unknown as Category[]
-
-        if (!(category as Category[]).every(i => categoryId.includes(i))) return errorMsg(res, 400, 'Please enter correct categoryId.')
+        if (!category.every(i => categoryIdsSet.has(Number(i)))) return errorMsg(res, 400, 'Please enter correct categoryId.')
 
         const [filePath, user] = await Promise.all([
-          uploadSingleImageToS3(file as MulterFile, userId), User.findByPk(id), TeachingCategory.destroy({ where: { teacherId: id } })
+          uploadSingleImageToS3(file as MulterFile, id),
+          User.findByPk(id),
+          TeachingCategory.destroy({
+            where: { teacherId: id }
+          })
         ])
 
-        const bulkCreateData = Array.from(
-          { length: category.length },
-          (_, i) => ({ teacherId: id, categoryId: category[i] as number })
-        ) as unknown as TeachingCategory[]
+        if (user == null) return errorMsg(res, 500, 'User data missing') // 於 Auth-handler middleware 對使用者是否存在已做過確認，按理不應該出現找不到使用者的狀況
+
+        const bulkCreateData = category.map((_, i) => ({
+          teacherId: id,
+          categoryId: category[i]
+        })) as TeachingCategory[]
+
         const teachingCategory = await TeachingCategory.bulkCreate(bulkCreateData)
         const updateFields = { name, nation, nickname, teachStyle, selfIntro, ...availableDays }
-
-        if (user == null) return errorMsg(res, 404, "Teacher didn't exist!")
 
         await user.update({ avatar: filePath ?? user.avatar, ...updateFields })
 

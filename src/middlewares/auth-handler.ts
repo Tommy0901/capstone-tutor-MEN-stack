@@ -8,7 +8,7 @@ import { type ErrorResponse, errorMsg } from '../helpers/message-helper'
 export interface AuthenticatedRequest extends Request {
   user: {
     id: number
-    isTeacher: number
+    isTeacher: number | boolean
     email: string
     iat: number
     exp: number
@@ -36,7 +36,7 @@ export function authenticated (req: Request, res: Response, next: NextFunction):
       const userNotFound = await User.findByPk(id, {
         attributes: ['isTeacher'],
         raw: true
-      }) as unknown as { isTeacher: number }
+      })
 
       if (userNotFound == null) {
         return errorMsg(res, 401, 'Invalid jwt token')

@@ -68,7 +68,7 @@ class CourseController {
           User.findByPk(id, {
             attributes: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'],
             raw: true
-          }) as unknown as AvailableDaysCount,
+          }),
           Course.findAll({
             attributes: ['duration', 'startAt'],
             where: {
@@ -77,7 +77,7 @@ class CourseController {
             },
             raw: true
           })
-        ])
+        ]) as [Category[], AvailableDaysCount, Course[]]
 
         if (!confirmAvailability(availableDaysCount)) return errorMsg(res, 400, 'Please select available days first.')
 
@@ -183,7 +183,7 @@ class CourseController {
           User.findByPk(id, {
             attributes: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'],
             raw: true
-          }) as unknown as AvailableDaysCount,
+          }),
           Course.findAll({
             attributes: ['duration', 'startAt'],
             where: {
@@ -194,7 +194,7 @@ class CourseController {
             raw: true
           }),
           Course.findByPk(courseId)
-        ])
+        ]) as [Category[], AvailableDaysCount, Course[], Course | null]
 
         if (course == null) return errorMsg(res, 404, "Course didn't exist!")
 

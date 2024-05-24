@@ -24,14 +24,12 @@ export default {
     }))
 
     const randomIndex = (Array: string[]): number => Math.floor(Math.random() * Array.length)
-    const courses = []
 
-    courses.push(...teachers.flatMap(teacher => {
+    const courses = teachers.flatMap(teacher => {
       const { id, teachingCategories, ...freeDays } = teacher
+
       const historicalCourseDates = pastCourseDates(freeDays)
       const futureCourseDates = upcomingCourseDates(freeDays)
-
-      const courseDates = []
 
       const firstCouseDate = historicalCourseDates[randomIndex(historicalCourseDates)]
       let secondCoursDate = historicalCourseDates[randomIndex(historicalCourseDates)]
@@ -47,7 +45,7 @@ export default {
         fourthCoursDate = futureCourseDates[randomIndex(futureCourseDates)]
       } while (fourthCoursDate === thirdCouseDate)
 
-      courseDates.push(firstCouseDate, secondCoursDate, thirdCouseDate, fourthCoursDate)
+      const courseDates = [firstCouseDate, secondCoursDate, thirdCouseDate, fourthCoursDate]
 
       return courseDates.map(courseDate => ({
         teacher_id: id,
@@ -59,7 +57,7 @@ export default {
         image: 'https://fakeimg.pl/300/?text=course%20img',
         start_at: courseDate
       }))
-    }))
+    })
 
     await queryInterface.bulkInsert('courses', courses)
   },

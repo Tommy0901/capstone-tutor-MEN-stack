@@ -10,16 +10,17 @@ export default {
       sequelize.query(
         'SELECT id FROM users WHERE is_teacher = 0;',
         { type: QueryTypes.SELECT }
-      ) as unknown as Array<{ id: string }>,
+      ),
       sequelize.query(
         'SELECT id FROM courses WHERE start_at < :todayDate;',
         { type: QueryTypes.SELECT, replacements: { todayDate: currentTaipeiTime(new Date()) } }
-      ) as unknown as Array<{ id: string }>,
+      ),
       sequelize.query(
         'SELECT id FROM courses WHERE start_at >= :todayDate;',
         { type: QueryTypes.SELECT, replacements: { todayDate: currentTaipeiTime(new Date()) } }
-      ) as unknown as Array<{ id: string }>
-    ])
+      )
+    ]) as Array<Array<{ id: string }>>
+
     const averageStudentsArrayIndex = (i: number): number => Math.ceil((i + 1) * students.length / expiredCourses.length) - 1
     const randomStudentsArrayIndex = (i?: number): number => Math.floor(Math.random() * students.length)
     const registrations = []

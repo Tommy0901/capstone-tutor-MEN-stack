@@ -22,26 +22,26 @@ class UserRoute extends Route {
     this.router.post('/signin',
       this.userController.signIn.bind(this.userController)
     )
-    this.router.get('/student/:id/edit', authenticated,
+    this.router.get('/student/edit', authenticated,
       this.userController.editStudent.bind(this.userController)
     )
-    this.router.put('/student/:id', authenticated, upload.single('avatar'),
+    this.router.put('/student', authenticated, upload.single('avatar'),
       this.userController.putStudent.bind(this.userController)
     )
-    this.router.get('/student/:id', authenticated,
+    this.router.get('/student', authenticated,
       this.userController.getStudent.bind(this.userController)
+    )
+    this.router.patch('/teacher', authenticated,
+      this.userController.patchTeacher.bind(this.userController)
+    )
+    this.router.put('/teacher', authenticated, upload.single('avatar'),
+      this.userController.putTeacher.bind(this.userController)
+    )
+    this.router.get('/teacher/edit', authenticated,
+      this.userController.editTeacher.bind(this.userController)
     )
     this.router.get('/teacher/:id/personal', authenticated,
       this.userController.getTeacher.bind(this.userController)
-    )
-    this.router.get('/teacher/:id/edit', authenticated,
-      this.userController.editTeacher.bind(this.userController)
-    )
-    this.router.put('/teacher/:id', authenticated, upload.single('avatar'),
-      this.userController.putTeacher.bind(this.userController)
-    )
-    this.router.patch('/teacher/:id', authenticated,
-      this.userController.patchTeacher.bind(this.userController)
     )
     this.router.get('/teacher/:id',
       this.userController.getTeacher.bind(this.userController)

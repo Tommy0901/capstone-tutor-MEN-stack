@@ -24,13 +24,10 @@ void (async () => {
     }))
 
     const randomIndex = (Array: string[]): number => Math.floor(Math.random() * Array.length)
-    const courses = []
 
-    courses.push(...teachers.flatMap(teacher => {
+    const courses = teachers.flatMap(teacher => {
       const { id, teachingCategories, ...freeDays } = teacher
       const futureCourseDates = upcomingCourseDates(freeDays)
-
-      const courseDates = []
 
       const firstCouseDate = futureCourseDates[randomIndex(futureCourseDates)]
       let secondCoursDate = futureCourseDates[randomIndex(futureCourseDates)]
@@ -39,7 +36,7 @@ void (async () => {
         secondCoursDate = futureCourseDates[randomIndex(futureCourseDates)]
       } while (secondCoursDate === firstCouseDate)
 
-      courseDates.push(firstCouseDate, secondCoursDate)
+      const courseDates = [firstCouseDate, secondCoursDate]
 
       return courseDates.map(courseDate => ({
         teacherId: id,
@@ -50,10 +47,10 @@ void (async () => {
         duration: (Math.floor(Math.random() * 2) !== 0) ? 30 : 60,
         image: 'https://fakeimg.pl/300/?text=course%20img',
         startAt: courseDate
-      }))
-    }))
+      })) as unknown as Course[]
+    })
 
-    await Course.bulkCreate(courses as unknown as Course[])
+    await Course.bulkCreate(courses)
   } catch (err) {
     console.log(err)
   } finally {
