@@ -22,14 +22,14 @@ class UserRoute extends Route {
     this.router.post('/signin',
       this.userController.signIn.bind(this.userController)
     )
-    this.router.get('/student/edit', authenticated,
-      this.userController.editStudent.bind(this.userController)
+    this.router.get('/student', authenticated,
+      this.userController.getStudent.bind(this.userController)
     )
     this.router.put('/student', authenticated, upload.single('avatar'),
       this.userController.putStudent.bind(this.userController)
     )
-    this.router.get('/student', authenticated,
-      this.userController.getStudent.bind(this.userController)
+    this.router.get('/student/edit', authenticated,
+      this.userController.editStudent.bind(this.userController)
     )
     this.router.patch('/teacher', authenticated,
       this.userController.patchTeacher.bind(this.userController)

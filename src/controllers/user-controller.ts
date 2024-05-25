@@ -20,7 +20,7 @@ interface RequestBody {
   name: string
   email: string
   password: string
-  confirmedPassword: string
+  passwordCheck: string
 }
 
 interface UserData extends Omit<User, 'createdAt' | 'updatedAt'> {
@@ -126,7 +126,7 @@ class UserController {
   }
 
   signUp (req: Request, res: Response, next: NextFunction): Response<ErrorResponse> | undefined {
-    const { name, email, password, confirmedPassword } = req.body as RequestBody
+    const { name, email, password, passwordCheck } = req.body as RequestBody
 
     if (allNotNullOrEmpty(name, email, password)) {
       return errorMsg(res, 400, 'Name, email, password are required fields.')
@@ -136,7 +136,7 @@ class UserController {
       return errorMsg(res, 400, 'The email format is invalid.')
     }
 
-    if (password !== confirmedPassword) {
+    if (password !== passwordCheck) {
       return errorMsg(res, 400, 'Password does not match the confirmed password.')
     }
 
@@ -328,7 +328,7 @@ class UserController {
   patchTeacher (req: Request, res: Response, next: NextFunction): Response<ErrorResponse> | undefined {
     const { user: { id, isTeacher } } = req as AuthenticatedRequest
 
-    if (isTeacher !== 0) return errorMsg(res, 403, 'Duplicate application for teacher. Update failed!')
+    if (isTeacher !== 0) return errorMsg(res, 409, 'Duplicate application for teacher. Update failed!')
 
     void (async () => {
       try {
