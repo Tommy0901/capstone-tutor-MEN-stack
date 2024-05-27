@@ -90,7 +90,7 @@ class CourseController {
         }
 
         const hasDuplicate = new Set(category).size !== category.length
-        if (hasDuplicate) return errorMsg(res, 403, 'The course categoryId has been used more than once.')
+        if (hasDuplicate) return errorMsg(res, 400, 'The course categoryId has been used more than once.')
 
         const categoryNames = category.reduce<string[]>((acc, curr) => {
           const matchedItem = categories.find(item => item.id === curr)

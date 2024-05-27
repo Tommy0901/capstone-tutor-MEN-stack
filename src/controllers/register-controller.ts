@@ -189,7 +189,7 @@ class RegisterController {
     void (async () => {
       try {
         const isRatingAnInteger = Number.isInteger(rating) && rating > 0
-        if (!isRatingAnInteger) return errorMsg(res, 400, 'Course rating has been integer!')
+        if (!isRatingAnInteger) return errorMsg(res, 400, 'Course rating should be integer!')
 
         const registration = await Registration.findOne({
           where: { studentId, courseId },

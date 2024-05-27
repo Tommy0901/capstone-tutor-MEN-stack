@@ -1,4 +1,4 @@
-import { user } from './paths'
+import { admin, user, course, register } from './paths'
 
 const openapi = '3.1.0'
 
@@ -18,11 +18,26 @@ const tags = [
   {
     name: '使用者相關',
     description: 'User login/logout, edit personal profile, apply to become a teacher'
+  },
+  {
+    name: '課程相關',
+    description: 'Create/update course, course information, cancel Course'
+  },
+  {
+    name: '註冊相關',
+    description: 'Course registration and review, cancel registration'
+  },
+  {
+    name: '管理者權限相關',
+    description: 'Administrator privileges'
   }
 ]
 
 const paths = {
-  ...user
+  ...admin,
+  ...user,
+  ...course,
+  ...register
 }
 
 const securitySchemes = {

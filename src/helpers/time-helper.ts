@@ -123,9 +123,10 @@ export function confirmScheduledHoursConflicts (scheduledHours: FormattedCourse[
   }))
 
   for (const range of timeSlots) {
-    const condition1 = dayjs(range.startAt).isAfter(endAt)
-    const condition2 = dayjs(range.endAt).isBefore(startAt)
-    if (!(condition1 || condition2)) return true
+    const condition1 = dayjs(range.startAt).isBefore(endAt)
+    const condition2 = dayjs(range.endAt).isAfter(startAt)
+
+    if (condition1 && condition2) return true
   }
 
   return false
