@@ -1,6 +1,6 @@
 import { parameters as param } from './parameter'
-import { requestBody } from './requestBody'
-import { responses as res } from './response'
+import { RequestBody } from './requestBody'
+import { Response } from './response'
 
 const tags = ['使用者相關']
 
@@ -8,13 +8,16 @@ const security = [{
   bearerAuth: []
 }]
 
+const req = new RequestBody()
+const res = new Response()
+
 export default {
   '/signup': {
     post: {
       tags,
       summary: '送出使用者註冊資料',
       description: '欄位 name, email, password, passwordCheck 為必填',
-      requestBody: requestBody.signUp,
+      requestBody: req.signUp,
       responses: {
         200: res.signUp.Success,
         400: res.signUp.BadRequest,
@@ -27,7 +30,7 @@ export default {
       tags,
       summary: '送出使用者登入資料',
       description: '欄位 email, password 為必填',
-      requestBody: requestBody.signIn,
+      requestBody: req.signIn,
       responses: {
         200: res.signIn.Success,
         400: res.signIn.BadRequest,
@@ -88,7 +91,7 @@ export default {
       summary: '老師修改個人頁面',
       security,
       description: '可編輯欄位包含 name, nation, nickname, teachStyle, selfIntro, category(陣列) 及勾選可上課星期，其中 name 跟 category 為必填',
-      requestBody: requestBody.putTeacher,
+      requestBody: req.putTeacher,
       responses: {
         200: res.putTeacher.Success,
         400: res.putTeacher.BadRequest,
@@ -126,7 +129,7 @@ export default {
       summary: '學生修改個人頁面',
       security,
       description: '可編輯欄位包含 name , nickname, avatar, selfIntro 其中 name 為必填',
-      requestBody: requestBody.putStudent,
+      requestBody: req.putStudent,
       responses: {
         200: res.putStudent.Success,
         400: res.putStudent.BadRequest,

@@ -29,10 +29,10 @@ export const parameters = {
     {
       name: 'id',
       in: 'path',
-      description: '請輸入老師 id',
       schema: {
-        type: 'string'
+        type: 'integer'
       },
+      description: '請輸入老師 id',
       required: true
     }
   ]
