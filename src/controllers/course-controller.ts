@@ -164,11 +164,16 @@ class CourseController {
     const { params: { courseId }, user: { id } } = req as AuthenticatedRequest
     const { body: { category, name, intro, link, duration, startAt }, file } = req
 
+    const categoryIds = Array.isArray(category) ? category : [category]
+
     if (allNotNullOrEmpty(category, name, intro, link, duration, startAt)) {
       return errorMsg(res, 400, 'Category, name, intro, link, duration, and startAt fields must not be empty.')
     }
 
-    if (!Array.isArray(category) || category?.length < 1) return errorMsg(res, 400, 'Please enter categoryId array!')
+    if (categoryIds.length < 1) return errorMsg(res, 400, 'Please enter categoryId array!')
+
+    const hasDuplicate = new Set(categoryIds).size !== categoryIds.length
+    if (hasDuplicate) return errorMsg(res, 403, 'The course categoryId has been used more than once.')
 
     if (startAt <= currentTaipeiTime(new Date())) return errorMsg(res, 400, 'Course opening time should not be in the past.')
 
@@ -210,10 +215,7 @@ class CourseController {
           return errorMsg(res, 400, "The course opening time conflicts with the teacher's class schedule.")
         }
 
-        const hasDuplicate = new Set(category).size !== category.length
-        if (hasDuplicate) return errorMsg(res, 403, 'The course categoryId has been used more than once.')
-
-        const categoryNames = category.reduce<string[]>((acc, curr) => {
+        const categoryNames = categoryIds.reduce<string[]>((acc, curr) => {
           const matchedItem = categories.find(item => item.id === curr)
           if (matchedItem != null) acc.push(matchedItem.name)
           return acc

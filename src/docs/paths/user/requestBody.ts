@@ -125,7 +125,7 @@ export class RequestBody {
   private addContent (properties: Properties, form?: string): { content: typeof content } {
     const schema = { type: 'object', properties }
     const content = form === 'multipart/form-data'
-      ? { 'multipart/form-data': { schema } }
+      ? { 'multipart/form-data': { schema, encoding: { category: { style: form, explode: true } } } }
       : { 'application/json': { schema } }
 
     return { content }

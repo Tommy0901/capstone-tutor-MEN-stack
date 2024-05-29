@@ -433,16 +433,18 @@ class UserController {
     const { user: { id }, file } = req as AuthenticatedRequest
     const { body: { name, nation, nickname, teachStyle, selfIntro, category } } = req
     const { body: { mon, tue, wed, thu, fri, sat, sun } } = req
+
     const availableDays: Record<string, boolean> = { mon, tue, wed, thu, fri, sat, sun }
+    const categoryIds = Array.isArray(category) ? category : [category]
 
     if (name == null || name === '') return errorMsg(res, 400, 'Please enter name.')
 
-    if (!Array.isArray(category) || category?.length < 1) return errorMsg(res, 400, 'Please enter categoryId array.')
+    if (categoryIds.length < 1) return errorMsg(res, 400, 'Please enter categoryId array.')
 
-    const hasDuplicates = category.filter((value, index, self) => self.indexOf(value) !== index).length > 0
+    const hasDuplicates = new Set(categoryIds).size !== categoryIds.length
     if (hasDuplicates) return errorMsg(res, 400, 'CategoryId has duplicates.')
 
-    if (!booleanObjects(availableDays)) return errorMsg(res, 400, 'Please select available days first.')
+    if (!booleanObjects(availableDays)) return errorMsg(res, 400, 'The input value of available days should be boolean or undefined.')
 
     if (!Object.keys(countries).includes(nation as string)) return errorMsg(res, 400, 'Input nation code was invalid.')
 
@@ -450,7 +452,7 @@ class UserController {
       try {
         const categoryIdsSet = new Set((await Category.findAll({ raw: true })).map(i => i.id)) as Set<number>
 
-        if (!category.every(i => categoryIdsSet.has(Number(i)))) return errorMsg(res, 400, 'Please enter correct categoryId.')
+        if (!categoryIds.every(i => categoryIdsSet.has(Number(i)))) return errorMsg(res, 400, 'Please enter correct categoryId.')
 
         const [filePath, user] = await Promise.all([
           uploadSingleImageToS3(file as MulterFile, id),
@@ -462,7 +464,7 @@ class UserController {
 
         if (user == null) return errorMsg(res, 500, 'User data missing') // 於 Auth-handler middleware 對使用者是否存在已做過確認，按理不應該出現找不到使用者的狀況
 
-        const bulkCreateData = category.map((_, i) => ({
+        const bulkCreateData = categoryIds.map((_, i) => ({
           teacherId: id,
           categoryId: category[i]
         })) as TeachingCategory[]
