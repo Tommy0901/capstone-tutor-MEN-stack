@@ -24,16 +24,6 @@ export default {
     }
   },
   '/register/{courseId}': {
-    get: {
-      tags,
-      summary: '老師查看課程的預約情形',
-      security,
-      parameters: param.getRegistrationsByCourse,
-      responses: {
-        200: res.getRegistrationsByCourse.Success,
-        403: res.getRegistrationsByCourse.Forbidden
-      }
-    },
     post: {
       tags,
       summary: '學生預約課程',

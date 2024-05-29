@@ -66,46 +66,6 @@ class RegisterController {
     })()
   }
 
-  getRegistrationsByCourse (req: Request, res: Response, next: NextFunction): void {
-    const { params: { courseId }, user: { id: teacherId } } = req as AuthenticatedRequest
-
-    void (async () => {
-      try {
-        const courseRegisters = await Registration.findAll({
-          attributes: ['studentId', 'courseId', 'rating', 'comment'],
-          where: { courseId },
-          include: [
-            {
-              model: User,
-              attributes: ['id', 'name', 'email', 'nickname', 'avatar']
-            },
-            {
-              model: Course,
-              attributes: ['name', 'category', 'link', 'teacherId', 'startAt', 'duration']
-            }
-          ]
-        })
-
-        const courseTeacherId = courseRegisters[0].dataValues.course.teacherId
-        if (courseTeacherId !== teacherId) return errorMsg(res, 403, 'Unable to browse this course booking records.')
-
-        const data = courseRegisters.map(registration => {
-          const { course } = registration.dataValues;
-          (course.dataValues as CourseData).startAt = currentTaipeiTime(registration.dataValues.course.dataValues.startAt)
-
-          return {
-            ...registration.dataValues,
-            course
-          }
-        })
-
-        res.json({ status: 'success', data })
-      } catch (err) {
-        next(err)
-      }
-    })()
-  }
-
   postRegistration (req: Request, res: Response, next: NextFunction): void {
     const { params: { courseId }, user: { id: studentId } } = req as AuthenticatedRequest
 

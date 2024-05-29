@@ -15,9 +15,6 @@ class RegisterRoute extends Route {
     this.router.get('/register/all', authenticated,
       this.registerController.getRegistrations.bind(this.registerController)
     )
-    this.router.get('/register/:courseId', authenticated,
-      this.registerController.getRegistrationsByCourse.bind(this.registerController)
-    )
     this.router.post('/register/:courseId', authenticated,
       this.registerController.postRegistration.bind(this.registerController)
     )
