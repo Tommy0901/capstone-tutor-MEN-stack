@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken'
 
 import { User } from '../models'
 
+import { processEnv } from '../helpers/env-helper'
 import { type ErrorResponse, errorMsg } from '../helpers/message-helper'
 
 export interface AuthenticatedRequest extends Request {
@@ -20,10 +21,10 @@ export function authenticated (req: Request, res: Response, next: NextFunction):
 
   if (token == null) return errorMsg(res, 401, 'Unauthorized')
 
-  if (process.env.JWT_SECRET == null || process.env.JWT_SECRET === '') throw new Error('JWT_SECRET is not defined')
+  const secretOrPublicKey = processEnv('JWT_SECRET')
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET)
+    req.user = jwt.verify(token, secretOrPublicKey)
   } catch (err) {
     // 捕獲 JWT 驗證錯誤
     return errorMsg(res, 401, `${(err as Error).message}`)

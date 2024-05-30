@@ -1,7 +1,6 @@
 import { type Request, type Response, type NextFunction } from 'express'
 import sequelize, { Op } from 'sequelize'
 import bcrypt from 'bcryptjs'
-import dotenv from 'dotenv'
 import jwt from 'jsonwebtoken'
 
 import { Admin, User, Category, Course, Registration, TeachingCategory } from '../models'
@@ -15,6 +14,7 @@ import { getOffset, getPagination } from '../helpers/pagination-helper'
 import { currentTaipeiTime } from '../helpers/time-helper'
 import { allNotNullOrEmpty, booleanObjects } from '../helpers/validation-helper'
 import { type MulterFile, uploadSingleImageToS3 } from '../helpers/image-helper'
+import { processEnv } from '../helpers/env-helper'
 
 interface RequestBody {
   name: string
@@ -34,8 +34,6 @@ interface CourseData extends Omit<Course, 'startAt' | 'createdAt' | 'updatedAt'>
   createdAt: string | Date
   updatedAt: string | Date
 }
-
-if (process.env.NODE_ENV !== 'production') dotenv.config()
 
 class UserController {
   homepage (req: Request, res: Response, next: NextFunction): void {
@@ -190,29 +188,25 @@ class UserController {
 
         const { isTeacher } = user as User
 
+        const payload = {
+          id: user.id,
+          isTeacher,
+          name: user.name,
+          email: user.email
+        }
+
+        const secretOrPrivateKey = processEnv('JWT_SECRET')
+
+        const options = { expiresIn: '30d' }
+
         await bcrypt.compare(password, user.password)
-          ? (process.env.JWT_SECRET != null)
-              ? res.json({
-                status: 'success',
-                data: {
-                  id: user.id,
-                  isTeacher,
-                  name: user.name,
-                  email: user.email,
-                  token: jwt.sign(
-                    {
-                      id: user.id,
-                      isTeacher,
-                      email: user.email
-                    },
-                    process.env.JWT_SECRET,
-                    {
-                      expiresIn: '30d'
-                    }
-                  )
-                }
-              })
-              : errorMsg(res, 500, 'JWT token encountered a generation error.')
+          ? res.json({
+            status: 'success',
+            data: {
+              ...payload,
+              token: jwt.sign(payload, secretOrPrivateKey, options)
+            }
+          })
           : errorMsg(res, 401, 'Incorrect username or password!')
       } catch (err) {
         next(err)

@@ -13,7 +13,6 @@ export class Response {
     Success: ReturnType<Response[200]>
     BadRequest: ReturnType<Response[400]>
     Unauthorized: ReturnType<Response[401]>
-    InternalServerError: ReturnType<Response[500]>
   }
 
   homepage: {
@@ -74,8 +73,7 @@ export class Response {
     this.signIn = {
       Success: this[200](data.signIn),
       BadRequest: this[400]('Please enter email and password.'),
-      Unauthorized: this[401]('Incorrect username or password!'),
-      InternalServerError: this[500]('JWT token encountered a generation error.')
+      Unauthorized: this[401]('Incorrect username or password!')
     }
     this.homepage = {
       Success: this[200](data.homepage)

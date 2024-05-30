@@ -34,8 +34,7 @@ export default {
       responses: {
         200: res.signIn.Success,
         400: res.signIn.BadRequest,
-        401: res.signIn.Unauthorized,
-        500: res.signIn.InternalServerError
+        401: res.signIn.Unauthorized
       }
     }
   },
