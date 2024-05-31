@@ -2,63 +2,41 @@ import data from './data'
 
 type Data = typeof data[keyof typeof data]
 
+type responseType = 'Success' | 'BadRequest' | 'Unauthorized' | 'Forbidden' | 'NotFound' | 'Conflict' | 'InternalServerError'
+
+type responseCode = 200 | 400 | 401 | 403 | 404 | 409 | 500
+
+type Responses = Partial<Record<responseType, ReturnType<Response[responseCode]>>>
+
 export class Response {
-  getCoursesByTeacher: {
-    Success: ReturnType<Response[200]>
+  getCoursesByTeacher: Responses = {
+    Success: this[200](data.getCoursesByTeacher)
   }
 
-  postCourse: {
-    Success: ReturnType<Response[200]>
-    BadRequest: ReturnType<Response[400]>
-    Forbidden: ReturnType<Response[403]>
+  postCourse: Responses = {
+    Success: this[200](data.postCourse),
+    BadRequest: this[400]('The course cannot open in the past.'),
+    Forbidden: this[403]('Insufficient permission. Unable to create a new course!')
   }
 
-  getCourse: {
-    Success: ReturnType<Response[200]>
-    Forbidden: ReturnType<Response[403]>
-    NotFound: ReturnType<Response[404]>
+  getCourse: Responses = {
+    Success: this[200](data.getCourse),
+    Forbidden: this[403]('Insufficient permissions.'),
+    NotFound: this[404]("Course didn't exist!")
   }
 
-  putCourse: {
-    Success: ReturnType<Response[200]>
-    BadRequest: ReturnType<Response[400]>
-    Forbidden: ReturnType<Response[403]>
-    NotFound: ReturnType<Response[404]>
+  putCourse: Responses = {
+    Success: this[200](data.putCourse),
+    BadRequest: this[400]('Please input correct categoryId.'),
+    Forbidden: this[403]('Insufficient permissions. Update failed!'),
+    NotFound: this[404]("Course didn't exist!")
   }
 
-  deleteCourse: {
-    Success: ReturnType<Response[200]>
-    Forbidden: ReturnType<Response[403]>
-    NotFound: ReturnType<Response[404]>
-    InternalServerError: ReturnType<Response[500]>
-  }
-
-  constructor () {
-    this.getCoursesByTeacher = {
-      Success: this[200](data.getCoursesByTeacher)
-    }
-    this.postCourse = {
-      Success: this[200](data.postCourse),
-      BadRequest: this[400]('The course cannot open in the past.'),
-      Forbidden: this[403]('Insufficient permission. Unable to create a new course!')
-    }
-    this.getCourse = {
-      Success: this[200](data.getCourse),
-      Forbidden: this[403]('Insufficient permissions.'),
-      NotFound: this[404]("Course didn't exist!")
-    }
-    this.putCourse = {
-      Success: this[200](data.putCourse),
-      BadRequest: this[400]('Please input correct categoryId.'),
-      Forbidden: this[403]('Insufficient permissions. Update failed!'),
-      NotFound: this[404]("Course didn't exist!")
-    }
-    this.deleteCourse = {
-      Success: this[200](data.deleteCourse),
-      Forbidden: this[403]('Insufficient permissions.'),
-      NotFound: this[404]("Course didn't exist!"),
-      InternalServerError: this[500]('Delete course failed, Database Error.')
-    }
+  deleteCourse: Responses = {
+    Success: this[200](data.deleteCourse),
+    Forbidden: this[403]('Insufficient permissions.'),
+    NotFound: this[404]("Course didn't exist!"),
+    InternalServerError: this[500]('Delete course failed, Database Error.')
   }
 
   private 200 (data: Data): typeof Success {

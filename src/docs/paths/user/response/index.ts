@@ -2,120 +2,72 @@ import data from './data'
 
 type Data = typeof data[keyof typeof data]
 
+type responseType = 'Success' | 'BadRequest' | 'Unauthorized' | 'Forbidden' | 'NotFound' | 'Conflict' | 'InternalServerError'
+
+type responseCode = 200 | 400 | 401 | 403 | 404 | 409 | 500
+
+type Responses = Partial<Record<responseType, ReturnType<Response[responseCode]>>>
+
 export class Response {
-  signUp: {
-    Success: ReturnType<Response[200]>
-    BadRequest: ReturnType<Response[400]>
-    Conflict: ReturnType<Response[409]>
+  signUp: Responses = {
+    Success: this[200](data.signUp),
+    BadRequest: this[400]('Password does not match the confirmed password.'),
+    Conflict: this[409]('Email has already been registered.')
   }
 
-  signIn: {
-    Success: ReturnType<Response[200]>
-    BadRequest: ReturnType<Response[400]>
-    Unauthorized: ReturnType<Response[401]>
+  signIn: Responses = {
+    Success: this[200](data.signIn),
+    BadRequest: this[400]('Please enter email and password.'),
+    Unauthorized: this[401]('Incorrect username or password!')
   }
 
-  homepage: {
-    Success: ReturnType<Response[200]>
+  homepage: Responses = {
+    Success: this[200](data.homepage)
   }
 
-  getTeacher: {
-    Success: ReturnType<Response[200]>
-    Unauthorized: ReturnType<Response[401]>
-    NotFound: ReturnType<Response[404]>
+  getTeacher: Responses = {
+    Success: this[200](data.getTeacher),
+    Unauthorized: this[401]('Unauthorized'),
+    NotFound: this[404]("Teacher didn't exist!")
   }
 
-  editTeacher: {
-    Success: ReturnType<Response[200]>
-    Unauthorized: ReturnType<Response[401]>
-    InternalServerError: ReturnType<Response[500]>
+  editTeacher: Responses = {
+    Success: this[200](data.editTeacher),
+    Unauthorized: this[401]('Unauthorized'),
+    InternalServerError: this[500]('User data missing')
   }
 
-  putTeacher: {
-    Success: ReturnType<Response[200]>
-    BadRequest: ReturnType<Response[400]>
-    Unauthorized: ReturnType<Response[401]>
-    InternalServerError: ReturnType<Response[500]>
+  putTeacher: Responses = {
+    Success: this[200](data.putTeacher),
+    BadRequest: this[400]('Please enter categoryId array.'),
+    Unauthorized: this[401]('Unauthorized'),
+    InternalServerError: this[500]('User data missing')
   }
 
-  patchTeacher: {
-    Success: ReturnType<Response[200]>
-    Unauthorized: ReturnType<Response[401]>
-    Conflict: ReturnType<Response[409]>
-    InternalServerError: ReturnType<Response[500]>
+  patchTeacher: Responses = {
+    Success: this[200](data.patchTeacher),
+    Unauthorized: this[401]('Unauthorized'),
+    Conflict: this[409]('Duplicate application for teacher. Update failed!'),
+    InternalServerError: this[500]('DataBase Error. Update failed!')
   }
 
-  editStudent: {
-    Success: ReturnType<Response[200]>
-    Unauthorized: ReturnType<Response[401]>
-    InternalServerError: ReturnType<Response[500]>
+  editStudent: Responses = {
+    Success: this[200](data.editStudent),
+    Unauthorized: this[401]('Unauthorized'),
+    InternalServerError: this[500]('User data missing')
   }
 
-  putStudent: {
-    Success: ReturnType<Response[200]>
-    BadRequest: ReturnType<Response[400]>
-    Unauthorized: ReturnType<Response[401]>
-    InternalServerError: ReturnType<Response[500]>
+  putStudent: Responses = {
+    Success: this[200](data.putStudent),
+    BadRequest: this[400]('Please enter name.'),
+    Unauthorized: this[401]('Unauthorized'),
+    InternalServerError: this[500]('DataBase Error. Update failed!')
   }
 
-  getStudent: {
-    Success: ReturnType<Response[200]>
-    Unauthorized: ReturnType<Response[401]>
-    InternalServerError: ReturnType<Response[500]>
-  }
-
-  constructor () {
-    this.signUp = {
-      Success: this[200](data.signUp),
-      BadRequest: this[400]('Password does not match the confirmed password.'),
-      Conflict: this[409]('Email has already been registered.')
-    }
-    this.signIn = {
-      Success: this[200](data.signIn),
-      BadRequest: this[400]('Please enter email and password.'),
-      Unauthorized: this[401]('Incorrect username or password!')
-    }
-    this.homepage = {
-      Success: this[200](data.homepage)
-    }
-    this.getTeacher = {
-      Success: this[200](data.getTeacher),
-      Unauthorized: this[401]('Unauthorized'),
-      NotFound: this[404]("Teacher didn't exist!")
-    }
-    this.editTeacher = {
-      Success: this[200](data.editTeacher),
-      Unauthorized: this[401]('Unauthorized'),
-      InternalServerError: this[500]('User data missing')
-    }
-    this.putTeacher = {
-      Success: this[200](data.putTeacher),
-      BadRequest: this[400]('Please enter categoryId array.'),
-      Unauthorized: this[401]('Unauthorized'),
-      InternalServerError: this[500]('User data missing')
-    }
-    this.patchTeacher = {
-      Success: this[200](data.patchTeacher),
-      Unauthorized: this[401]('Unauthorized'),
-      Conflict: this[409]('Duplicate application for teacher. Update failed!'),
-      InternalServerError: this[500]('DataBase Error. Update failed!')
-    }
-    this.editStudent = {
-      Success: this[200](data.editStudent),
-      Unauthorized: this[401]('Unauthorized'),
-      InternalServerError: this[500]('User data missing')
-    }
-    this.putStudent = {
-      Success: this[200](data.putStudent),
-      BadRequest: this[400]('Please enter name.'),
-      Unauthorized: this[401]('Unauthorized'),
-      InternalServerError: this[500]('DataBase Error. Update failed!')
-    }
-    this.getStudent = {
-      Success: this[200](data.getStudent),
-      Unauthorized: this[401]('Unauthorized'),
-      InternalServerError: this[500]('User data missing')
-    }
+  getStudent: Responses = {
+    Success: this[200](data.getStudent),
+    Unauthorized: this[401]('Unauthorized'),
+    InternalServerError: this[500]('User data missing')
   }
 
   private 200 (data: Data): typeof Success {

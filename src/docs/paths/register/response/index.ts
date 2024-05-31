@@ -2,59 +2,39 @@ import data from './data'
 
 type Data = typeof data[keyof typeof data]
 
+type responseType = 'Success' | 'BadRequest' | 'Unauthorized' | 'Forbidden' | 'NotFound' | 'Conflict' | 'InternalServerError'
+
+type responseCode = 200 | 400 | 401 | 403 | 404 | 409 | 500
+
+type Responses = Partial<Record<responseType, ReturnType<Response[responseCode]>>>
+
 export class Response {
-  getRegistrations: {
-    Success: ReturnType<Response[200]>
+  getRegistrations: Responses = {
+    Success: this[200](data.getRegistrations)
   }
 
-  getRegistrationsByCourse: {
-    Success: ReturnType<Response[200]>
-    Forbidden: ReturnType<Response[403]>
+  getRegistrationsByCourse: Responses = {
+    Success: this[200](data.getRegistrationsByCourse),
+    Forbidden: this[403]('Unable to browse this course booking records.')
   }
 
-  postRegistration: {
-    Success: ReturnType<Response[200]>
-    BadRequest: ReturnType<Response[400]>
-    Forbidden: ReturnType<Response[403]>
-    NotFound: ReturnType<Response[404]>
-    InternalServerError: ReturnType<Response[500]>
+  postRegistration: Responses = {
+    Success: this[200](data.postRegistration),
+    BadRequest: this[400]('Duplicate registration for this course'),
+    Forbidden: this[403]('Teachers are not allowed to register for their own courses.'),
+    NotFound: this[404]("Unable to register the course. Because the course didn't exist!"),
+    InternalServerError: this[500]('Register course failed, Database error!')
   }
 
-  putRegistration: {
-    Success: ReturnType<Response[200]>
-    BadRequest: ReturnType<Response[400]>
+  putRegistration: Responses = {
+    Success: this[200](data.putRegistration),
+    BadRequest: this[400]('The course has not started yet!')
   }
 
-  deleteRegistration: {
-    Success: ReturnType<Response[200]>
-    NotFound: ReturnType<Response[404]>
-    InternalServerError: ReturnType<Response[500]>
-  }
-
-  constructor () {
-    this.getRegistrations = {
-      Success: this[200](data.getRegistrations)
-    }
-    this.getRegistrationsByCourse = {
-      Success: this[200](data.getRegistrationsByCourse),
-      Forbidden: this[403]('Unable to browse this course booking records.')
-    }
-    this.postRegistration = {
-      Success: this[200](data.postRegistration),
-      BadRequest: this[400]('Duplicate registration for this course'),
-      Forbidden: this[403]('Teachers are not allowed to register for their own courses.'),
-      NotFound: this[404]("Unable to register the course. Because the course didn't exist!"),
-      InternalServerError: this[500]('Register course failed, Database error!')
-    }
-    this.putRegistration = {
-      Success: this[200](data.putRegistration),
-      BadRequest: this[400]('The course has not started yet!')
-    }
-    this.deleteRegistration = {
-      Success: this[200](data.deleteRegistration),
-      NotFound: this[404]("Registration didn't exist!"),
-      InternalServerError: this[500]('Delete registration failed, Database Error.')
-    }
+  deleteRegistration: Responses = {
+    Success: this[200](data.deleteRegistration),
+    NotFound: this[404]("Registration didn't exist!"),
+    InternalServerError: this[500]('Delete registration failed, Database Error.')
   }
 
   private 200 (data: Data): typeof Success {

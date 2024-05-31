@@ -2,17 +2,16 @@ import data from './data'
 
 type Data = typeof data[keyof typeof data]
 
-export class Response {
-  getAllUser: {
-    Success: ReturnType<Response[200]>
-    Forbidden: ReturnType<Response[403]>
-  }
+type responseType = 'Success' | 'BadRequest' | 'Unauthorized' | 'Forbidden' | 'NotFound' | 'Conflict' | 'InternalServerError'
 
-  constructor () {
-    this.getAllUser = {
-      Success: this[200](data.getAllUser),
-      Forbidden: this[403]('Insufficient permission.')
-    }
+type responseCode = 200 | 400 | 401 | 403 | 404 | 409 | 500
+
+type Responses = Partial<Record<responseType, ReturnType<Response[responseCode]>>>
+
+export class Response {
+  getAllUser: Responses = {
+    Success: this[200](data.getAllUser),
+    Forbidden: this[403]('Insufficient permission.')
   }
 
   private 200 (data: Data): typeof Success {
